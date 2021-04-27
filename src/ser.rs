@@ -1,4 +1,5 @@
 use crate::error::{Error, Result};
+use crate::consts::*;
 use serde::{ser, Serialize};
 
 pub struct Serializer<W> {
@@ -17,8 +18,13 @@ impl<W> Serializer<W>
 where
     W: std::io::Write 
 {
-    pub fn write(&self, buf: &[u8]) -> Result<usize> {
-        self.writer.write(buf)
+    pub fn write(&mut self, buf: &[u8]) -> Result<()> {
+        self.writer.write_all(buf)?;
+        Ok(())
+    }
+
+    pub fn write_byte(&mut self, b: u8) -> Result<()> {
+        self.write(&[b])
     }
 }
 
@@ -26,7 +32,7 @@ pub fn to_writer<W, T>(writer: &mut W, value: &T) -> Result<()> where
     W: std::io::Write,
     T: Serialize,
 {
-    value.serialize(&mut Serializer::new(&mut writer))
+    value.serialize(&mut Serializer::new(writer))
 }
 
 impl<'a, W> ser::Serializer for &'a mut Serializer<W>
@@ -60,57 +66,62 @@ where
     // false  ->  0x00
     // true   ->  0x01
     fn serialize_bool(self, v: bool) -> Result<()> {
-        self.output.push(if v { 0x00 } else { 0x01 });
-        Ok(())
+        self.write(if v { &[0x00] } else { &[0x01] })
     }
 
-    // JSON does not distinguish between different sizes of integers, so all
-    // signed integers will be serialized the same and all unsigned integers
-    // will be serialized the same. Other formats, especially compact binary
-    // formats, may need independent logic for the different sizes.
+    // The little-endian format is used in the protocol for the contents of integers on all platforms
+
+    // Signed bytes are written differently depending on the sign
+    // If > 0 they are written same as a u8
+    // If < 0 they are preuxed by CODE_NEG_INT8 then the u8 encoding
     fn serialize_i8(self, v: i8) -> Result<()> {
-        self.serialize_i64(i64::from(v))
+        if v < 0 {
+            self.write_byte(CODE_NEG_INT8)?;
+        }
+        self.serialize_u8(v.abs().to_le_bytes()[0])
     }
 
     fn serialize_i16(self, v: i16) -> Result<()> {
-        self.serialize_i64(i64::from(v))
+        self.write_byte(CODE_INT16)?;
+        self.write(&v.to_le_bytes())
     }
 
     fn serialize_i32(self, v: i32) -> Result<()> {
-        self.serialize_i64(i64::from(v))
+        self.write_byte(CODE_INT32)?;
+        self.write(&v.to_le_bytes())
     }
 
-    // Not particularly efficient but this is example code anyway. A more
-    // performant approach would be to use the `itoa` crate.
     fn serialize_i64(self, v: i64) -> Result<()> {
-        self.output += &v.to_string();
-        Ok(())
+        self.write_byte(CODE_INT64)?;
+        self.write(&v.to_le_bytes())
     }
 
+    // U8 are written without any special prefix
     fn serialize_u8(self, v: u8) -> Result<()> {
-        self.serialize_u64(u64::from(v))
+        self.write_byte(v)
     }
 
     fn serialize_u16(self, v: u16) -> Result<()> {
-        self.serialize_u64(u64::from(v))
+        self.serialize_i16(v as i16)
     }
 
     fn serialize_u32(self, v: u32) -> Result<()> {
-        self.serialize_u64(u64::from(v))
+        self.serialize_i32(v as i32)
     }
 
     fn serialize_u64(self, v: u64) -> Result<()> {
-        self.output += &v.to_string();
-        Ok(())
+        self.serialize_i64(v as i64)
     }
 
+
+    // Floats are written out according to the 64 bit IEEE 754 floating point standard
+    // i.e. their memory representation (in OCaml) is copied verbatim.
     fn serialize_f32(self, v: f32) -> Result<()> {
         self.serialize_f64(f64::from(v))
     }
 
     fn serialize_f64(self, v: f64) -> Result<()> {
-        self.output += &v.to_string();
-        Ok(())
+        todo!()
     }
 
     // Serialize a char as a single-character string. Other formats may
@@ -123,15 +134,11 @@ where
     // get the idea. For example it would emit invalid JSON if the input string
     // contains a '"' character.
     fn serialize_str(self, v: &str) -> Result<()> {
-        self.output += "\"";
-        self.output += v;
-        self.output += "\"";
-        Ok(())
+        todo!()
     }
 
-    // Serialize a byte array as an array of bytes. Could also use a base64
-    // string here. Binary formats will typically represent byte arrays more
-    // compactly.
+    // For lists and arrays the length is written out as a Nat0.t first,
+    // followed by all values in the same order as in the data structure.
     fn serialize_bytes(self, v: &[u8]) -> Result<()> {
         use serde::ser::SerializeSeq;
         let mut seq = self.serialize_seq(Some(v.len()))?;
@@ -152,20 +159,18 @@ where
     where
         T: ?Sized + Serialize,
     {
-        self.output.push(0x01);
+        self.write_byte(0x01)?;
         value.serialize(self)
     }
 
     // In Serde, unit means an anonymous value containing no data.
     // This is a zero byte
     fn serialize_unit(self) -> Result<()> {
-        self.output.push(0x00);
+        self.write_byte(0x00)?;
         Ok(())
     }
 
-    // Unit struct means a named value containing no data. Again, since there is
-    // no data, map this to JSON as `null`. There is no need to serialize the
-    // name in most formats.
+    // Unit struct means a named value containing no data.
     fn serialize_unit_struct(self, _name: &'static str) -> Result<()> {
         self.serialize_unit()
     }
@@ -211,12 +216,7 @@ where
     where
         T: ?Sized + Serialize,
     {
-        self.output += "{";
-        variant.serialize(&mut *self)?;
-        self.output += ":";
-        value.serialize(&mut *self)?;
-        self.output += "}";
-        Ok(())
+        todo!()
     }
 
     // Now we get to the serialization of compound types.
@@ -230,8 +230,7 @@ where
     // explicitly in the serialized form. Some serializers may only be able to
     // support sequences for which the length is known up front.
     fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq> {
-        self.output += "[";
-        Ok(self)
+        todo!()
     }
 
     // Tuples look just like sequences in JSON. Some formats may be able to
@@ -260,16 +259,14 @@ where
         variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleVariant> {
-        self.output += "{";
-        variant.serialize(&mut *self)?;
-        self.output += ":[";
-        Ok(self)
+        todo!()
+
     }
 
     // Maps are represented in JSON as `{ K: V, K: V, ... }`.
     fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap> {
-        self.output += "{";
-        Ok(self)
+        todo!()
+
     }
 
     // Structs look just like maps in JSON. In particular, JSON requires that we
@@ -282,7 +279,7 @@ where
         _name: &'static str,
         len: usize,
     ) -> Result<Self::SerializeStruct> {
-        self.serialize_map(Some(len))
+        todo!()
     }
 
     // Struct variants are represented in JSON as `{ NAME: { K: V, ... } }`.
@@ -294,13 +291,9 @@ where
         variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeStructVariant> {
-        self.output += "{";
-        variant.serialize(&mut *self)?;
-        self.output += ":{";
-        Ok(self)
+        todo!()
     }
 
-    fn collect_str<T>(self, _: &T) -> std::result::Result<<Self as serde::Serializer>::Ok, <Self as serde::Serializer>::Error> where T: std::fmt::Display { todo!() }
 }
 
 // The following 7 impls deal with the serialization of compound types like
@@ -323,16 +316,12 @@ where
     where
         T: ?Sized + Serialize,
     {
-        if !self.output.ends_with('[') {
-            self.output += ",";
-        }
-        value.serialize(&mut **self)
+        todo!()
     }
 
     // Close the sequence.
     fn end(self) -> Result<()> {
-        self.output += "]";
-        Ok(())
+        todo!()
     }
 }
 
@@ -348,15 +337,11 @@ where
     where
         T: ?Sized + Serialize,
     {
-        if !self.output.ends_with('[') {
-            self.output += ",";
-        }
-        value.serialize(&mut **self)
+        todo!()
     }
 
     fn end(self) -> Result<()> {
-        self.output += "]";
-        Ok(())
+        todo!()
     }
 }
 
@@ -372,15 +357,11 @@ where
     where
         T: ?Sized + Serialize,
     {
-        if !self.output.ends_with('[') {
-            self.output += ",";
-        }
-        value.serialize(&mut **self)
+        todo!()
     }
 
     fn end(self) -> Result<()> {
-        self.output += "]";
-        Ok(())
+        todo!()
     }
 }
 
@@ -404,15 +385,11 @@ where
     where
         T: ?Sized + Serialize,
     {
-        if !self.output.ends_with('[') {
-            self.output += ",";
-        }
-        value.serialize(&mut **self)
+        todo!()
     }
 
     fn end(self) -> Result<()> {
-        self.output += "]}";
-        Ok(())
+        todo!()
     }
 }
 
@@ -443,10 +420,7 @@ where
     where
         T: ?Sized + Serialize,
     {
-        if !self.output.ends_with('{') {
-            self.output += ",";
-        }
-        key.serialize(&mut **self)
+        todo!()
     }
 
     // It doesn't make a difference whether the colon is printed at the end of
@@ -456,13 +430,11 @@ where
     where
         T: ?Sized + Serialize,
     {
-        self.output += ":";
-        value.serialize(&mut **self)
+        todo!()
     }
 
     fn end(self) -> Result<()> {
-        self.output += "}";
-        Ok(())
+        todo!()
     }
 }
 
@@ -479,17 +451,11 @@ where
     where
         T: ?Sized + Serialize,
     {
-        if !self.output.ends_with('{') {
-            self.output += ",";
-        }
-        key.serialize(&mut **self)?;
-        self.output += ":";
-        value.serialize(&mut **self)
+        todo!()
     }
 
     fn end(self) -> Result<()> {
-        self.output += "}";
-        Ok(())
+        todo!()
     }
 }
 
@@ -506,16 +472,10 @@ where
     where
         T: ?Sized + Serialize,
     {
-        if !self.output.ends_with('{') {
-            self.output += ",";
-        }
-        key.serialize(&mut **self)?;
-        self.output += ":";
-        value.serialize(&mut **self)
+        todo!()
     }
 
     fn end(self) -> Result<()> {
-        self.output += "}}";
-        Ok(())
+        todo!()
     }
 }
