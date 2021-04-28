@@ -1,0 +1,78 @@
+///
+/// These tests aim to follow the Jane Street OCaml tests as closely as possible
+/// The tests contain a lookup table for auto-generated integer encoding test cases
+/// Each tests case is expressed as a single line as follows
+/// ```
+/// <type>| b8 b7 b6 b5 b4 b3 b2 b1 b0 -> <integer-repr>
+/// ```
+/// Note the bytes are little-endian encoded. The bytes may be written as '..'
+/// which is a placeholder (e.g. no byte)
+///
+/// These tests can be parsed and executed directly from their source
+use regex::Regex;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use serde_bin_prot::to_writer;
+
+#[derive(Debug)]
+struct IntegerTestCase {
+    pub bytes: Vec<u8>,
+    pub number_string: String,
+    pub type_string: String,
+}
+
+impl IntegerTestCase {
+    /// Test that serializing the integer as the given type 
+    /// yields the correct bytes
+    pub fn test_ser(&self) {
+        let integer = i64::from_str_radix(&self.number_string, 10).unwrap();
+        let mut bytes = Vec::<u8>::new();
+        to_writer(&mut bytes, &integer).unwrap();
+        assert_eq!(bytes, self.bytes)
+    }
+}
+
+/// Reads a line of the OCaml test code and converts it into our test case struct
+fn parse_line(s: &str) -> Result<IntegerTestCase, regex::Error> {
+    // first capture is type (e.g. nat0, uint32 etc)
+    // captures 2-10 are the bytes which are either hex bytes (e.g. ff) or '..' which is a placeholder
+    // last capture is the base10 integer representation
+    let r = Regex::new(
+        r"^(\w+)\| (\.{2}|[0-9a-fA-F]{2}) (\.{2}|[0-9a-fA-F]{2}) (\.{2}|[0-9a-fA-F]{2}) (\.{2}|[0-9a-fA-F]{2}) (\.{2}|[0-9a-fA-F]{2}) (\.{2}|[0-9a-fA-F]{2}) (\.{2}|[0-9a-fA-F]{2}) (\.{2}|[0-9a-fA-F]{2}) (\.{2}|[0-9a-fA-F]{2}) -> (-?\d+)$",
+    )?;
+    if let Some(caps) = r.captures(s) {
+        let type_string = caps.get(1).unwrap().as_str().to_string();
+        let mut bytes = Vec::<u8>::new();
+        for i in 2..=10 {
+            let s = caps.get(i).unwrap().as_str();
+            if let Ok(byte) = u8::from_str_radix(s, 16) {
+                bytes.push(byte)
+            }
+        }
+        bytes.reverse();
+        let number_string = caps.get(11).unwrap().as_str().to_string();
+
+        Ok(IntegerTestCase {
+            bytes,
+            number_string,
+            type_string,
+        })
+    } else {
+        panic!()
+    }
+}
+
+#[test]
+fn test_parsing() {
+    let filename = "tests/integers_repr_tests_64bit.ml";
+    let file = File::open(filename).unwrap();
+    let reader = BufReader::new(file);
+
+    for (index, line) in reader.lines().enumerate() {
+        let line = line.unwrap(); // Ignore errors.
+        let result = parse_line(&line).unwrap();
+        println!("{}, {:?}", index+1, line);
+        result.test_ser();
+    }
+    assert!(true)
+}

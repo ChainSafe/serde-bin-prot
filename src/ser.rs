@@ -1,5 +1,5 @@
-use crate::error::{Error, Result};
 use crate::consts::*;
+use crate::error::{Error, Result};
 use serde::{ser, Serialize};
 
 pub struct Serializer<W> {
@@ -8,15 +8,13 @@ pub struct Serializer<W> {
 
 impl<W> Serializer<W> {
     pub fn new(writer: W) -> Self {
-        Self {
-            writer
-        }
+        Self { writer }
     }
 }
 
 impl<W> Serializer<W>
 where
-    W: std::io::Write 
+    W: std::io::Write,
 {
     pub fn write(&mut self, buf: &[u8]) -> Result<()> {
         self.writer.write_all(buf)?;
@@ -28,7 +26,8 @@ where
     }
 }
 
-pub fn to_writer<W, T>(writer: &mut W, value: &T) -> Result<()> where
+pub fn to_writer<W, T>(writer: &mut W, value: &T) -> Result<()>
+where
     W: std::io::Write,
     T: Serialize,
 {
@@ -113,7 +112,6 @@ where
         self.serialize_i64(v as i64)
     }
 
-
     // Floats are written out according to the 64 bit IEEE 754 floating point standard
     // i.e. their memory representation (in OCaml) is copied verbatim.
     fn serialize_f32(self, v: f32) -> Result<()> {
@@ -137,8 +135,7 @@ where
         todo!()
     }
 
-    // For lists and arrays the length is written out as a Nat0.t first,
-    // followed by all values in the same order as in the data structure.
+    // just treat this like any other array for now
     fn serialize_bytes(self, v: &[u8]) -> Result<()> {
         use serde::ser::SerializeSeq;
         let mut seq = self.serialize_seq(Some(v.len()))?;
@@ -188,24 +185,15 @@ where
         self.serialize_str(variant)
     }
 
-    // As is done here, serializers are encouraged to treat newtype structs as
-    // insignificant wrappers around the data they contain.
-    fn serialize_newtype_struct<T>(
-        self,
-        _name: &'static str,
-        value: &T,
-    ) -> Result<()>
+    // TODO: What even is this?
+    fn serialize_newtype_struct<T>(self, _name: &'static str, value: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
         value.serialize(self)
     }
 
-    // Note that newtype variant (and all of the other variant serialization
-    // methods) refer exclusively to the "externally tagged" enum
-    // representation.
-    //
-    // Serialize this to JSON in externally tagged form as `{ NAME: VALUE }`.
+    // TODO: What even is this?
     fn serialize_newtype_variant<T>(
         self,
         _name: &'static str,
@@ -221,22 +209,16 @@ where
 
     // Now we get to the serialization of compound types.
     //
-    // The start of the sequence, each value, and the end are three separate
-    // method calls. This one is responsible only for serializing the start,
-    // which in JSON is `[`.
-    //
-    // The length of the sequence may or may not be known ahead of time. This
-    // doesn't make a difference in JSON because the length is not represented
-    // explicitly in the serialized form. Some serializers may only be able to
-    // support sequences for which the length is known up front.
+    // For lists and arrays the length is written out as a Nat0.t first,
+    // followed by all values in the same order as in the data structure.
     fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq> {
         todo!()
     }
 
-    // Tuples look just like sequences in JSON. Some formats may be able to
-    // represent tuples more efficiently by omitting the length, since tuple
-    // means that the corresponding `Deserialize implementation will know the
-    // length without needing to look at the serialized data.
+    // Values in tuples and records are written out one after the other in the order
+    // specified in the type definition.
+    // Polymorphic record fields are supported unless a value of the type bound
+    // by the field were accessed, which would lead to an exception.
     fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple> {
         self.serialize_seq(Some(len))
     }
@@ -260,13 +242,11 @@ where
         _len: usize,
     ) -> Result<Self::SerializeTupleVariant> {
         todo!()
-
     }
 
     // Maps are represented in JSON as `{ K: V, K: V, ... }`.
     fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap> {
         todo!()
-
     }
 
     // Structs look just like maps in JSON. In particular, JSON requires that we
@@ -274,11 +254,7 @@ where
     // omit the field names when serializing structs because the corresponding
     // Deserialize implementation is required to know what the keys are without
     // looking at the serialized data.
-    fn serialize_struct(
-        self,
-        _name: &'static str,
-        len: usize,
-    ) -> Result<Self::SerializeStruct> {
+    fn serialize_struct(self, _name: &'static str, len: usize) -> Result<Self::SerializeStruct> {
         todo!()
     }
 
@@ -293,7 +269,6 @@ where
     ) -> Result<Self::SerializeStructVariant> {
         todo!()
     }
-
 }
 
 // The following 7 impls deal with the serialization of compound types like
@@ -305,7 +280,7 @@ where
 // is called on the Serializer.
 impl<'a, W> ser::SerializeSeq for &'a mut Serializer<W>
 where
-    W: std::io::Write,    // Must match the `Ok` type of the serializer.
+    W: std::io::Write, // Must match the `Ok` type of the serializer.
 {
     type Ok = ();
     // Must match the `Error` type of the serializer.

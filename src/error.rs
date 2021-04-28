@@ -5,9 +5,9 @@ use serde::de;
 use serde::ser;
 #[cfg(feature = "std")]
 use std::error;
+use std::error::Error as StdError;
 #[cfg(feature = "std")]
 use std::io;
-use std::error::Error as StdError;
 
 /// This type represents all possible errors that can occur when serializing or deserializing Bin_prot
 /// data.
