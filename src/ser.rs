@@ -70,42 +70,65 @@ where
 
     // The little-endian format is used in the protocol for the contents of integers on all platforms
 
+    // For all Integer types:
+    // if the value is positive (including zero) and if it is:it
+    // <  0x00000080  ->  lower 8 bits of the integer                     (1 byte)
+    // <  0x00008000  ->  CODE_INT16 followed by lower 16 bits of integer (3 bytes)
+    // <  0x80000000  ->  CODE_INT32 followed by lower 32 bits of integer (5 bytes)
+    // >= 0x80000000  ->  CODE_INT64 followed by all 64 bits of integer   (9 bytes)
+
+    // If the value is negative and if it is:
+    // >= -0x00000080  ->  CODE_NEG_INT8 followed by lower 8 bits of integer (2 bytes)
+    // >= -0x00008000  ->  CODE_INT16 followed by lower 16 bits of integer   (3 bytes)
+    // >= -0x80000000  ->  CODE_INT32 followed by lower 32 bits of integer   (5 bytes)
+    // <  -0x80000000  ->  CODE_INT64 followed by all 64 bits of integer     (9 bytes)
+
     // Signed bytes are written differently depending on the sign
     // If > 0 they are written same as a u8
     // If < 0 they are preuxed by CODE_NEG_INT8 then the u8 encoding
     fn serialize_i8(self, v: i8) -> Result<()> {
-        if v < 0 {
-            self.write_byte(CODE_NEG_INT8)?;
-        }
-        self.serialize_u8(v.abs().to_le_bytes()[0])
+        self.serialize_i64(v.into())
     }
 
     fn serialize_i16(self, v: i16) -> Result<()> {
-        self.write_byte(CODE_INT16)?;
-        self.write(&v.to_le_bytes())
+        self.serialize_i64(v.into())
     }
 
     fn serialize_i32(self, v: i32) -> Result<()> {
-        self.write_byte(CODE_INT32)?;
-        self.write(&v.to_le_bytes())
+        self.serialize_i64(v.into())
     }
 
     fn serialize_i64(self, v: i64) -> Result<()> {
-        self.write_byte(CODE_INT64)?;
-        self.write(&v.to_le_bytes())
+        // this is where all the integer serialization logic lives
+        if v >= 0 { // positive or zero case
+            match v {
+                _ if v < 0x00000080 => { self.write(&v.to_le_bytes()[..1]) }
+                _ if v < 0x00008000 => { self.write_byte(CODE_INT16)?; self.write(&v.to_le_bytes()[..2]) }
+                _ if v < 0x80000000 => { self.write_byte(CODE_INT32)?; self.write(&v.to_le_bytes()[..4]) }
+                _ => { self.write_byte(CODE_INT64)?; self.write(&v.to_le_bytes()) }
+            }
+        } else { // negative case
+            match v {
+                _ if v >= -0x00000080 => { self.write_byte(CODE_NEG_INT8)?; self.write(&v.to_le_bytes()[..1]) }
+                _ if v >= -0x00008000 => { self.write_byte(CODE_INT16)?; self.write(&v.to_le_bytes()[..2]) }
+                _ if v >= -0x80000000 => { self.write_byte(CODE_INT32)?; self.write(&v.to_le_bytes()[..4]) }
+                _ => { self.write_byte(CODE_INT64)?; self.write(&v.to_le_bytes()) }
+            }
+        }
     }
 
-    // U8 are written without any special prefix
+    // Unsigned forms just cast to signed forms then serialize
+    // TODO: There could probably be some optimization done here
     fn serialize_u8(self, v: u8) -> Result<()> {
-        self.write_byte(v)
+        self.serialize_i64(v as i64)
     }
 
     fn serialize_u16(self, v: u16) -> Result<()> {
-        self.serialize_i16(v as i16)
+        self.serialize_i64(v as i64)
     }
 
     fn serialize_u32(self, v: u32) -> Result<()> {
-        self.serialize_i32(v as i32)
+        self.serialize_i64(v as i64)
     }
 
     fn serialize_u64(self, v: u64) -> Result<()> {
