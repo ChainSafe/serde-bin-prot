@@ -12,7 +12,39 @@
 use regex::Regex;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use serde_bin_prot::to_writer;
+use serde_bin_prot::{to_writer, Nat0};
+
+enum OCamlInteger {
+    Int(i64),
+    Nat0(Nat0),
+}
+
+impl  OCamlInteger {
+    fn from_strs(type_s: &str, value_s: &str) -> Result<Self, String> {
+        match type_s {
+            "int"
+            | "int32"
+            | "int64"
+            | "variant_int"
+            | "int_16bit"
+            | "int_32bit"
+            | "int_64bit"
+            | "int64_bits"
+            | "network32_int"
+            | "network64_int"
+            | "network32_int32"
+            | "network64_int64" => {
+                let v = i64::from_str_radix(value_s, 10).unwrap();
+                Ok(Self::Int(v))
+            },
+            "nat0" => {
+                let v = u64::from_str_radix(value_s, 10).unwrap();
+                Ok(Self::Nat0(Nat0::new(v)))
+            },
+            _ => Err("fail".to_string())
+        }
+    }
+}
 
 #[derive(Debug)]
 struct IntegerTestCase {
@@ -25,10 +57,13 @@ impl IntegerTestCase {
     /// Test that serializing the integer as the given type 
     /// yields the correct bytes
     pub fn test_ser(&self) {
-        let integer = i64::from_str_radix(&self.number_string, 10).unwrap();
-        let mut bytes = Vec::<u8>::new();
-        to_writer(&mut bytes, &integer).unwrap();
-        assert_eq!(bytes, self.bytes)
+        let val = OCamlInteger::from_strs(&self.type_string, &self.number_string).unwrap();
+        let mut output = Vec::<u8>::new();
+        match val {
+            OCamlInteger::Int(v) => { to_writer(&mut output, &v).unwrap(); }
+            OCamlInteger::Nat0(v) => { to_writer(&mut output, &v).unwrap(); }
+        }
+        assert_eq!(output, self.bytes)
     }
 }
 

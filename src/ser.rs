@@ -65,13 +65,13 @@ where
     // false  ->  0x00
     // true   ->  0x01
     fn serialize_bool(self, v: bool) -> Result<()> {
-        self.write(if v { &[0x00] } else { &[0x01] })
+        self.write_byte(if v { 0x00 } else { 0x01 })
     }
 
     // The little-endian format is used in the protocol for the contents of integers on all platforms
 
     // For all Integer types:
-    // if the value is positive (including zero) and if it is:it
+    // if the value is positive (including zero) and if it is:
     // <  0x00000080  ->  lower 8 bits of the integer                     (1 byte)
     // <  0x00008000  ->  CODE_INT16 followed by lower 16 bits of integer (3 bytes)
     // <  0x80000000  ->  CODE_INT32 followed by lower 32 bits of integer (5 bytes)
@@ -83,9 +83,6 @@ where
     // >= -0x80000000  ->  CODE_INT32 followed by lower 32 bits of integer   (5 bytes)
     // <  -0x80000000  ->  CODE_INT64 followed by all 64 bits of integer     (9 bytes)
 
-    // Signed bytes are written differently depending on the sign
-    // If > 0 they are written same as a u8
-    // If < 0 they are preuxed by CODE_NEG_INT8 then the u8 encoding
     fn serialize_i8(self, v: i8) -> Result<()> {
         self.serialize_i64(v.into())
     }
@@ -160,12 +157,13 @@ where
 
     // just treat this like any other array for now
     fn serialize_bytes(self, v: &[u8]) -> Result<()> {
-        use serde::ser::SerializeSeq;
-        let mut seq = self.serialize_seq(Some(v.len()))?;
-        for byte in v {
-            seq.serialize_element(byte)?;
-        }
-        seq.end()
+        self.write(v)
+        // use serde::ser::SerializeSeq;
+        // let mut seq = self.serialize_seq(Some(v.len()))?;
+        // for byte in v {
+        //     seq.serialize_element(byte)?;
+        // }
+        // seq.end()
     }
 
     // An absent optional is represented as a unit or zero byte
