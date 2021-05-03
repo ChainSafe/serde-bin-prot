@@ -1,3 +1,4 @@
+use crate::Nat0;
 use crate::consts::*;
 use crate::error::{Error, Result};
 use serde::{ser, Serialize};
@@ -195,9 +196,9 @@ where
         self,
         _name: &'static str,
         _variant_index: u32,
-        variant: &'static str,
+        _variant: &'static str,
     ) -> Result<()> {
-        self.serialize_str(variant)
+        todo!()
     }
 
     // TODO: What even is this?
@@ -213,8 +214,8 @@ where
         self,
         _name: &'static str,
         _variant_index: u32,
-        variant: &'static str,
-        value: &T,
+        _variant: &'static str,
+        _value: &T,
     ) -> Result<()>
     where
         T: ?Sized + Serialize,
@@ -226,8 +227,16 @@ where
     //
     // For lists and arrays the length is written out as a Nat0.t first,
     // followed by all values in the same order as in the data structure.
-    fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq> {
-        todo!()
+    // This function only handles writing of the first element
+    fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
+        if let Some(len) = len {
+            // write the output length first
+            let len_nat0 = Nat0::from(len);
+            len_nat0.serialize(&mut *self)?;
+            Ok(self) // pass self as the handler for writing the elements
+        } else {
+            Err(Error::message("Size not provided"))
+        }
     }
 
     // Values in tuples and records are written out one after the other in the order
@@ -235,7 +244,7 @@ where
     // Polymorphic record fields are supported unless a value of the type bound
     // by the field were accessed, which would lead to an exception.
     fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple> {
-        self.serialize_seq(Some(len))
+        Ok(self)
     }
 
     // Tuple structs look just like sequences in JSON.
@@ -259,22 +268,14 @@ where
         todo!()
     }
 
-    // Maps are represented in JSON as `{ K: V, K: V, ... }`.
     fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap> {
         todo!()
     }
 
-    // Structs look just like maps in JSON. In particular, JSON requires that we
-    // serialize the field names of the struct. Other formats may be able to
-    // omit the field names when serializing structs because the corresponding
-    // Deserialize implementation is required to know what the keys are without
-    // looking at the serialized data.
     fn serialize_struct(self, _name: &'static str, len: usize) -> Result<Self::SerializeStruct> {
         todo!()
     }
 
-    // Struct variants are represented in JSON as `{ NAME: { K: V, ... } }`.
-    // This is the externally tagged representation.
     fn serialize_struct_variant(
         self,
         _name: &'static str,
@@ -290,7 +291,9 @@ where
 // sequences and maps. Serialization of such types is begun by a Serializer
 // method and followed by zero or more calls to serialize individual elements of
 // the compound type and one call to end the compound type.
-//
+
+
+
 // This impl is SerializeSeq so these methods are called after `serialize_seq`
 // is called on the Serializer.
 impl<'a, W> ser::SerializeSeq for &'a mut Serializer<W>
@@ -306,16 +309,15 @@ where
     where
         T: ?Sized + Serialize,
     {
-        todo!()
+        value.serialize(&mut **self)
     }
 
-    // Close the sequence.
     fn end(self) -> Result<()> {
-        todo!()
-    }
+        // nothing special required for an array end
+        Ok(())    }
 }
 
-// Same thing but for tuples.
+// Tuples are serialized just as the elements written consecutively
 impl<'a, W> ser::SerializeTuple for &'a mut Serializer<W>
 where
     W: std::io::Write,
@@ -327,11 +329,12 @@ where
     where
         T: ?Sized + Serialize,
     {
-        todo!()
+        value.serialize(&mut **self)
     }
 
     fn end(self) -> Result<()> {
-        todo!()
+        // nothing special required for a tuple end
+        Ok(())
     }
 }
 
@@ -355,15 +358,6 @@ where
     }
 }
 
-// Tuple variants are a little different. Refer back to the
-// `serialize_tuple_variant` method above:
-//
-//    self.output += "{";
-//    variant.serialize(&mut *self)?;
-//    self.output += ":[";
-//
-// So the `end` method in this impl is responsible for closing both the `]` and
-// the `}`.
 impl<'a, W> ser::SerializeTupleVariant for &'a mut Serializer<W>
 where
     W: std::io::Write,

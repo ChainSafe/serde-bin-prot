@@ -35,3 +35,9 @@ impl Serialize for Nat0 {
         }     
     }
 }
+
+impl From<usize> for Nat0 {
+    fn from(v: usize) -> Self {
+        Self(v as u64)
+    }
+}
