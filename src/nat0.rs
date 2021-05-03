@@ -12,7 +12,7 @@ use crate::consts::*;
 // <  0x100000000  ->  CODE_INT32 followed by lower 32 bits of integer (5 bytes)
 // >= 0x100000000  ->  CODE_INT64 followed by all 64 bits of integer   (9 bytes)
 
-#[derive(Shrinkwrap)]
+#[derive(Shrinkwrap, Debug)]
 pub struct Nat0(u64);
 
 impl Nat0 {
