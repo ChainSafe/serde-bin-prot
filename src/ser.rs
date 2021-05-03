@@ -139,7 +139,7 @@ where
     }
 
     fn serialize_f64(self, v: f64) -> Result<()> {
-        todo!()
+        self.write(&v.to_le_bytes())
     }
 
     // Serialize a char as a single-character string. Other formats may
