@@ -158,12 +158,6 @@ where
     // just treat this like any other array for now
     fn serialize_bytes(self, v: &[u8]) -> Result<()> {
         self.write(v)
-        // use serde::ser::SerializeSeq;
-        // let mut seq = self.serialize_seq(Some(v.len()))?;
-        // for byte in v {
-        //     seq.serialize_element(byte)?;
-        // }
-        // seq.end()
     }
 
     // An absent optional is represented as a unit or zero byte

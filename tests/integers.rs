@@ -25,7 +25,6 @@ impl  OCamlInteger {
             "int"
             | "int32"
             | "int64"
-            | "variant_int"
             | "int_16bit"
             | "int_32bit"
             | "int_64bit"
@@ -41,6 +40,7 @@ impl  OCamlInteger {
                 let v = u64::from_str_radix(value_s, 10).unwrap();
                 Ok(Self::Nat0(Nat0::new(v)))
             },
+            "variant_int" => Err("Not supported".to_string()),
             _ => Err("fail".to_string())
         }
     }
@@ -103,7 +103,7 @@ fn test_parsing() {
     let file = File::open(filename).unwrap();
     let reader = BufReader::new(file);
 
-    for (index, line) in reader.lines().enumerate() {
+    for (index, line) in reader.lines().skip(6925).enumerate() {
         let line = line.unwrap(); // Ignore errors.
         let result = parse_line(&line).unwrap();
         println!("{}, {:?}", index+1, line);
