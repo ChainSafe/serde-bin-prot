@@ -1,330 +1,112 @@
-//! When serializing or deserializing Bin_prot goes wrong.
-use core::fmt;
-use core::result;
-use serde::de;
-use serde::ser;
-#[cfg(feature = "std")]
-use std::error;
-use std::error::Error as StdError;
-#[cfg(feature = "std")]
+//! Error objects and codes
+
+use std::fmt;
 use std::io;
+use std::error;
+use std::result;
+use serde::{ser, de};
 
-/// This type represents all possible errors that can occur when serializing or deserializing Bin_prot
-/// data.
-pub struct Error(ErrorImpl);
+#[derive(Clone, PartialEq, Debug)]
+pub enum ErrorCode {
+    /// Unsupported opcode
+    Unsupported(char),
+    /// EOF while parsing op argument
+    EOFWhileParsing,
+    /// Stack underflowed
+    StackUnderflow,
+    /// Length prefix found negative
+    NegativeLength,
+    /// String decoding as UTF-8 failed
+    StringNotUTF8,
+    /// Wrong stack top type for opcode
+    InvalidStackTop(&'static str, String),
+    /// Value not hashable, but used as dict key or set item
+    ValueNotHashable,
+    /// Recursive structure found, which we don't support
+    Recursive,
+    /// A "module global" reference wasn't resolved by REDUCE
+    UnresolvedGlobal,
+    /// A "module global" isn't supported
+    UnsupportedGlobal(Vec<u8>, Vec<u8>),
+    /// A value was missing from the memo
+    MissingMemo(u32),
+    /// Invalid literal found
+    InvalidLiteral(Vec<u8>),
+    /// Found trailing bytes after STOP opcode
+    TrailingBytes,
+    /// Invalid value in stream
+    InvalidValue(String),
+    /// Structure deserialization error (e.g., unknown variant)
+    Structure(String),
+}
 
-/// Alias for a `Result` with the error type `serde_cbor::Error`.
+impl fmt::Display for ErrorCode {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ErrorCode::Unsupported(ch) => write!(fmt, "unsupported opcode {:?}", ch),
+            ErrorCode::EOFWhileParsing => write!(fmt, "EOF while parsing"),
+            ErrorCode::StackUnderflow => write!(fmt, "stack underflow"),
+            ErrorCode::NegativeLength => write!(fmt, "negative length prefix"),
+            ErrorCode::StringNotUTF8 => write!(fmt, "string is not UTF-8 encoded"),
+            ErrorCode::InvalidStackTop(what, ref it) =>
+                write!(fmt, "invalid stack top, expected {}, got {}", what, it),
+            ErrorCode::ValueNotHashable => write!(fmt, "dict key or set item not hashable"),
+            ErrorCode::Recursive => write!(fmt, "recursive structure found"),
+            ErrorCode::UnresolvedGlobal => write!(fmt, "unresolved global reference"),
+            ErrorCode::UnsupportedGlobal(ref m, ref g) =>
+                write!(fmt, "unsupported global: {}.{}",
+                       String::from_utf8_lossy(m), String::from_utf8_lossy(g)),
+            ErrorCode::MissingMemo(n) => write!(fmt, "missing memo with id {}", n),
+            ErrorCode::InvalidLiteral(ref l) =>
+                write!(fmt, "literal is invalid: {}", String::from_utf8_lossy(l)),
+            ErrorCode::TrailingBytes => write!(fmt, "trailing bytes found"),
+            ErrorCode::InvalidValue(ref s) => write!(fmt, "invalid value: {}", s),
+            ErrorCode::Structure(ref s) => fmt.write_str(s),
+        }
+    }
+}
+
+/// This type represents all possible errors that can occur when serializing or
+/// deserializing a value.
+#[derive(Debug)]
+pub enum Error {
+    /// Some IO error occurred when serializing or deserializing a value.
+    Io(io::Error),
+    /// The deserializer had some error while interpreting.
+    Eval(ErrorCode, usize),
+    /// Syntax error while transforming into Rust values.
+    Syntax(ErrorCode),
+}
+
+impl From<io::Error> for Error {
+    fn from(error: io::Error) -> Error {
+        Error::Io(error)
+    }
+}
+
 pub type Result<T> = result::Result<T, Error>;
 
-/// Categorizes the cause of a `serde_cbor::Error`.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Category {
-    /// The error was caused by a failure to read or write bytes on an IO stream.
-    Io,
-    /// The error was caused by input that was not syntactically valid Bin_prot.
-    Syntax,
-    /// The error was caused by input data that was semantically incorrect.
-    Data,
-    /// The error was caused by prematurely reaching the end of the input data.
-    Eof,
-}
-
-impl Error {
-    /// The byte offset at which the error occurred.
-    pub fn offset(&self) -> u64 {
-        self.0.offset
-    }
-
-    pub(crate) fn syntax(code: ErrorCode, offset: u64) -> Error {
-        Error(ErrorImpl { code, offset })
-    }
-
-    #[cfg(feature = "std")]
-    pub(crate) fn io(error: io::Error) -> Error {
-        Error(ErrorImpl {
-            code: ErrorCode::Io(error),
-            offset: 0,
-        })
-    }
-
-    #[cfg(all(not(feature = "std"), feature = "unsealed_read_write"))]
-    /// Creates an error signalling that the underlying `Read` encountered an I/O error.
-    pub fn io() -> Error {
-        Error(ErrorImpl {
-            code: ErrorCode::Io,
-            offset: 0,
-        })
-    }
-
-    #[cfg(feature = "unsealed_read_write")]
-    /// Creates an error signalling that the scratch buffer was too small to fit the data.
-    pub fn scratch_too_small(offset: u64) -> Error {
-        Error(ErrorImpl {
-            code: ErrorCode::ScratchTooSmall,
-            offset,
-        })
-    }
-
-    #[cfg(not(feature = "unsealed_read_write"))]
-    pub(crate) fn scratch_too_small(offset: u64) -> Error {
-        Error(ErrorImpl {
-            code: ErrorCode::ScratchTooSmall,
-            offset,
-        })
-    }
-
-    #[cfg(feature = "unsealed_read_write")]
-    /// Creates an error with a custom message.
-    ///
-    /// **Note**: When the "std" feature is disabled, the message will be discarded.
-    pub fn message<T: fmt::Display>(_msg: T) -> Error {
-        #[cfg(not(feature = "std"))]
-        {
-            Error(ErrorImpl {
-                code: ErrorCode::Message,
-                offset: 0,
-            })
-        }
-        #[cfg(feature = "std")]
-        {
-            Error(ErrorImpl {
-                code: ErrorCode::Message(_msg.to_string()),
-                offset: 0,
-            })
-        }
-    }
-
-    #[cfg(not(feature = "unsealed_read_write"))]
-    pub(crate) fn message<T: fmt::Display>(_msg: T) -> Error {
-        #[cfg(not(feature = "std"))]
-        {
-            Error(ErrorImpl {
-                code: ErrorCode::Message,
-                offset: 0,
-            })
-        }
-        #[cfg(feature = "std")]
-        {
-            Error(ErrorImpl {
-                code: ErrorCode::Message(_msg.to_string()),
-                offset: 0,
-            })
-        }
-    }
-
-    #[cfg(feature = "unsealed_read_write")]
-    /// Creates an error signalling that the underlying read
-    /// encountered an end of input.
-    pub fn eof(offset: u64) -> Error {
-        Error(ErrorImpl {
-            code: ErrorCode::EofWhileParsingValue,
-            offset,
-        })
-    }
-
-    /// Categorizes the cause of this error.
-    pub fn classify(&self) -> Category {
-        match self.0.code {
-            #[cfg(feature = "std")]
-            ErrorCode::Message(_) => Category::Data,
-            #[cfg(not(feature = "std"))]
-            ErrorCode::Message => Category::Data,
-            #[cfg(feature = "std")]
-            ErrorCode::Io(_) => Category::Io,
-            #[cfg(not(feature = "std"))]
-            ErrorCode::Io => Category::Io,
-            ErrorCode::ScratchTooSmall => Category::Io,
-            ErrorCode::EofWhileParsingValue
-            | ErrorCode::EofWhileParsingArray
-            | ErrorCode::EofWhileParsingMap => Category::Eof,
-            ErrorCode::LengthOutOfRange
-            | ErrorCode::InvalidUtf8
-            | ErrorCode::UnassignedCode
-            | ErrorCode::UnexpectedCode
-            | ErrorCode::TrailingData
-            | ErrorCode::ArrayTooShort
-            | ErrorCode::ArrayTooLong
-            | ErrorCode::RecursionLimitExceeded
-            | ErrorCode::WrongEnumFormat
-            | ErrorCode::WrongStructFormat => Category::Syntax,
-        }
-    }
-
-    /// Returns true if this error was caused by a failure to read or write bytes on an IO stream.
-    pub fn is_io(&self) -> bool {
-        match self.classify() {
-            Category::Io => true,
-            _ => false,
-        }
-    }
-
-    /// Returns true if this error was caused by input that was not syntactically valid Bin_prot.
-    pub fn is_syntax(&self) -> bool {
-        match self.classify() {
-            Category::Syntax => true,
-            _ => false,
-        }
-    }
-
-    /// Returns true if this error was caused by data that was semantically incorrect.
-    pub fn is_data(&self) -> bool {
-        match self.classify() {
-            Category::Data => true,
-            _ => false,
-        }
-    }
-
-    /// Returns true if this error was caused by prematurely reaching the end of the input data.
-    pub fn is_eof(&self) -> bool {
-        match self.classify() {
-            Category::Eof => true,
-            _ => false,
-        }
-    }
-
-    /// Returns true if this error was caused by the scratch buffer being too small.
-    ///
-    /// Note this being `true` implies that `is_io()` is also `true`.
-    pub fn is_scratch_too_small(&self) -> bool {
-        match self.0.code {
-            ErrorCode::ScratchTooSmall => true,
-            _ => false,
-        }
-    }
-}
-
-impl StdError for Error {}
-
-#[cfg(feature = "std")]
-impl error::Error for Error {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match self.0.code {
-            ErrorCode::Io(ref err) => Some(err),
-            _ => None,
-        }
-    }
-}
-
 impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.0.offset == 0 {
-            fmt::Display::fmt(&self.0.code, f)
-        } else {
-            write!(f, "{} at offset {}", self.0.code, self.0.offset)
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Error::Io(ref error) => error.fmt(fmt),
+            Error::Eval(ref code, offset) => write!(fmt, "eval error at offset {}: {}",
+                                                    offset, code),
+            Error::Syntax(ref code) => write!(fmt, "decoding error: {}", code)
         }
     }
 }
 
-impl fmt::Debug for Error {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&self.0, fmt)
-    }
-}
+impl error::Error for Error {}
 
 impl de::Error for Error {
     fn custom<T: fmt::Display>(msg: T) -> Error {
-        Error::message(msg)
-    }
-
-    fn invalid_type(unexp: de::Unexpected<'_>, exp: &dyn de::Expected) -> Error {
-        if let de::Unexpected::Unit = unexp {
-            Error::custom(format_args!("invalid type: null, expected {}", exp))
-        } else {
-            Error::custom(format_args!("invalid type: {}, expected {}", unexp, exp))
-        }
+        Error::Syntax(ErrorCode::Structure(msg.to_string()))
     }
 }
 
 impl ser::Error for Error {
     fn custom<T: fmt::Display>(msg: T) -> Error {
-        Error::message(msg)
-    }
-}
-
-impl From<std::io::Error> for Error {
-    fn from(_: std::io::Error) -> Self {
-        Self(ErrorImpl {
-            code: ErrorCode::Io,
-            offset: 0,
-        })
-    }
-}
-
-#[cfg(feature = "std")]
-impl From<io::Error> for Error {
-    fn from(e: io::Error) -> Error {
-        Error::io(e)
-    }
-}
-
-#[cfg(not(feature = "std"))]
-impl From<core::fmt::Error> for Error {
-    fn from(_: core::fmt::Error) -> Error {
-        Error(ErrorImpl {
-            code: ErrorCode::Message,
-            offset: 0,
-        })
-    }
-}
-
-#[derive(Debug)]
-struct ErrorImpl {
-    code: ErrorCode,
-    offset: u64,
-}
-
-#[derive(Debug)]
-pub(crate) enum ErrorCode {
-    #[cfg(feature = "std")]
-    Message(String),
-    #[cfg(not(feature = "std"))]
-    Message,
-    #[cfg(feature = "std")]
-    Io(io::Error),
-    #[allow(unused)]
-    #[cfg(not(feature = "std"))]
-    Io,
-    ScratchTooSmall,
-    EofWhileParsingValue,
-    EofWhileParsingArray,
-    EofWhileParsingMap,
-    LengthOutOfRange,
-    InvalidUtf8,
-    UnassignedCode,
-    UnexpectedCode,
-    TrailingData,
-    ArrayTooShort,
-    ArrayTooLong,
-    RecursionLimitExceeded,
-    WrongEnumFormat,
-    WrongStructFormat,
-}
-
-impl fmt::Display for ErrorCode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            #[cfg(feature = "std")]
-            ErrorCode::Message(ref msg) => f.write_str(msg),
-            #[cfg(not(feature = "std"))]
-            ErrorCode::Message => f.write_str("Unknown error"),
-            #[cfg(feature = "std")]
-            ErrorCode::Io(ref err) => fmt::Display::fmt(err, f),
-            #[cfg(not(feature = "std"))]
-            ErrorCode::Io => f.write_str("Unknown I/O error"),
-            ErrorCode::ScratchTooSmall => f.write_str("Scratch buffer too small"),
-            ErrorCode::EofWhileParsingValue => f.write_str("EOF while parsing a value"),
-            ErrorCode::EofWhileParsingArray => f.write_str("EOF while parsing an array"),
-            ErrorCode::EofWhileParsingMap => f.write_str("EOF while parsing a map"),
-            ErrorCode::LengthOutOfRange => f.write_str("length out of range"),
-            ErrorCode::InvalidUtf8 => f.write_str("invalid UTF-8"),
-            ErrorCode::UnassignedCode => f.write_str("unassigned type"),
-            ErrorCode::UnexpectedCode => f.write_str("unexpected code"),
-            ErrorCode::TrailingData => f.write_str("trailing data"),
-            ErrorCode::ArrayTooShort => f.write_str("array too short"),
-            ErrorCode::ArrayTooLong => f.write_str("array too long"),
-            ErrorCode::RecursionLimitExceeded => f.write_str("recursion limit exceeded"),
-            ErrorCode::WrongEnumFormat => f.write_str("wrong enum format"),
-            ErrorCode::WrongStructFormat => f.write_str("wrong struct format"),
-        }
+        Error::Syntax(ErrorCode::Structure(msg.to_string()))
     }
 }

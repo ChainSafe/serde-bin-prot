@@ -1,7 +1,8 @@
 use crate::Nat0;
 use crate::consts::*;
 use crate::error::{Error, Result};
-use serde::{ser, Serialize};
+use serde::{Serialize};
+use serde::ser::{self, Error as SerError};
 
 pub struct Serializer<W> {
     writer: W,
@@ -152,7 +153,7 @@ where
     // This only works for strings that don't require escape sequences but you
     // get the idea. For example it would emit invalid JSON if the input string
     // contains a '"' character.
-    fn serialize_str(self, v: &str) -> Result<()> {
+    fn serialize_str(self, _v: &str) -> Result<()> {
         todo!()
     }
 
@@ -235,7 +236,7 @@ where
             len_nat0.serialize(&mut *self)?;
             Ok(self) // pass self as the handler for writing the elements
         } else {
-            Err(Error::message("Size not provided"))
+            Err(Error::custom("Size not provided"))
         }
     }
 
@@ -243,7 +244,7 @@ where
     // specified in the type definition.
     // Polymorphic record fields are supported unless a value of the type bound
     // by the field were accessed, which would lead to an exception.
-    fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple> {
+    fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple> {
         Ok(self)
     }
 
@@ -262,7 +263,7 @@ where
         self,
         _name: &'static str,
         _variant_index: u32,
-        variant: &'static str,
+        _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleVariant> {
         todo!()
@@ -272,15 +273,15 @@ where
         todo!()
     }
 
-    fn serialize_struct(self, _name: &'static str, len: usize) -> Result<Self::SerializeStruct> {
-        todo!()
+    fn serialize_struct(self, _name: &'static str, _len: usize) -> Result<Self::SerializeStruct> {
+        Ok(self)
     }
 
     fn serialize_struct_variant(
         self,
         _name: &'static str,
         _variant_index: u32,
-        variant: &'static str,
+        _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeStructVariant> {
         todo!()
@@ -346,26 +347,7 @@ where
     type Ok = ();
     type Error = Error;
 
-    fn serialize_field<T>(&mut self, value: &T) -> Result<()>
-    where
-        T: ?Sized + Serialize,
-    {
-        todo!()
-    }
-
-    fn end(self) -> Result<()> {
-        todo!()
-    }
-}
-
-impl<'a, W> ser::SerializeTupleVariant for &'a mut Serializer<W>
-where
-    W: std::io::Write,
-{
-    type Ok = ();
-    type Error = Error;
-
-    fn serialize_field<T>(&mut self, value: &T) -> Result<()>
+    fn serialize_field<T>(&mut self, _value: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
@@ -400,7 +382,7 @@ where
     // This can be done by using a different Serializer to serialize the key
     // (instead of `&mut **self`) and having that other serializer only
     // implement `serialize_str` and return an error on any other data type.
-    fn serialize_key<T>(&mut self, key: &T) -> Result<()>
+    fn serialize_key<T>(&mut self, _key: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
@@ -410,7 +392,7 @@ where
     // It doesn't make a difference whether the colon is printed at the end of
     // `serialize_key` or at the beginning of `serialize_value`. In this case
     // the code is a bit simpler having it here.
-    fn serialize_value<T>(&mut self, value: &T) -> Result<()>
+    fn serialize_value<T>(&mut self, _value: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
@@ -422,8 +404,9 @@ where
     }
 }
 
-// Structs are like maps in which the keys are constrained to be compile-time
-// constant strings.
+// Structs are written exactly the same as Tuples
+// Field values are written one after the other in order
+// keys are ignored
 impl<'a, W> ser::SerializeStruct for &'a mut Serializer<W>
 where
     W: std::io::Write,
@@ -431,7 +414,33 @@ where
     type Ok = ();
     type Error = Error;
 
-    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<()>
+    fn serialize_field<T>(&mut self, _key: &'static str, value: &T) -> Result<()>
+    where
+        T: ?Sized + Serialize,
+    {
+        value.serialize(&mut **self)
+    }
+
+    fn end(self) -> Result<()> {
+        Ok(())
+    }
+}
+
+// Variants refer to the different possibilities of enums that hold data
+// e.g. enum Message {
+//     Quit,                          // unit variant
+//     ChangeColor(i32, i32, i32),    // tuple variant
+//     Move { x: i32, y: i32 },       // struct variant
+// }
+
+impl<'a, W> ser::SerializeTupleVariant for &'a mut Serializer<W>
+where
+    W: std::io::Write,
+{
+    type Ok = ();
+    type Error = Error;
+
+    fn serialize_field<T>(&mut self, _value: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
@@ -443,8 +452,6 @@ where
     }
 }
 
-// Similar to `SerializeTupleVariant`, here the `end` method is responsible for
-// closing both of the curly braces opened by `serialize_struct_variant`.
 impl<'a, W> ser::SerializeStructVariant for &'a mut Serializer<W>
 where
     W: std::io::Write,
@@ -452,7 +459,7 @@ where
     type Ok = ();
     type Error = Error;
 
-    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<()>
+    fn serialize_field<T>(&mut self, _key: &'static str, _value: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
