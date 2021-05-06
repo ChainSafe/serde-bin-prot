@@ -2,7 +2,7 @@
 use crate::error::{Error, ErrorCode, Result};
 use crate::integers::ReadBinProtIntegerExt;
 use byteorder::{LittleEndian, ReadBytesExt};
-use serde::de::{self, Error as DeError, Visitor};
+use serde::de::{self, Error as DeError, Visitor, EnumAccess};
 use serde::Deserialize;
 use std::io::{BufReader, Read};
 
@@ -258,11 +258,13 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     // Much like `deserialize_seq` but calls the visitors `visit_map` method
     // with a `MapAccess` implementation, rather than the visitor's `visit_seq`
     // method with a `SeqAccess` implementation.
-    fn deserialize_map<V>(self, _visitor: V) -> Result<V::Value>
+    // Similarly need to read the length as a Nat0 then decode values
+    fn deserialize_map<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        todo!()
+        let len = self.rdr.read_binprot_nat0()?;
+        visitor.visit_map(SeqAccess::new(self, len))
     }
 
     // Structs look just like sequences
@@ -282,12 +284,12 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
         self,
         _name: &'static str,
         _variants: &'static [&'static str],
-        _visitor: V,
+        visitor: V,
     ) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        todo!()
+        visitor.visit_enum(Enum::new(self))
     }
 
     fn deserialize_identifier<V>(self, _visitor: V) -> Result<V::Value>
@@ -344,5 +346,94 @@ impl<'de: 'a, 'a, R: Read> de::SeqAccess<'de> for SeqAccess<'a, R> {
 
     fn size_hint(&self) -> Option<usize> {
         Some(self.len)
+    }
+}
+
+impl<'de: 'a, 'a, R: Read> de::MapAccess<'de> for SeqAccess<'a, R> {
+    type Error = Error;
+
+    fn next_key_seed<T: de::DeserializeSeed<'de>>(&mut self, seed: T) -> Result<Option<T::Value>> {
+        if self.len > 0 {
+            self.len -= 1;
+            seed.deserialize(&mut *self.de).map(Some)
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn next_value_seed<T: de::DeserializeSeed<'de>>(&mut self, seed: T) -> Result<T::Value> {
+        seed.deserialize(&mut *self.de)
+    }
+
+    fn size_hint(&self) -> Option<usize> {
+        Some(self.len)
+    }
+}
+
+
+
+struct Enum<'a, R: Read> {
+    de: &'a mut Deserializer<R>,
+}
+
+impl<'a, 'de, R: Read> Enum<'a, R> {
+    fn new(de: &'a mut Deserializer<R>) -> Self {
+        Enum { de }
+    }
+}
+
+// `EnumAccess` is provided to the `Visitor` to give it the ability to determine
+// which variant of the enum is supposed to be deserialized.
+//
+// Note that all enum deserialization methods in Serde refer exclusively to the
+// "externally tagged" enum representation.
+impl<'de, 'a, R: Read> EnumAccess<'de> for Enum<'a, R> {
+    type Error = Error;
+    type Variant = Self;
+
+    fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self::Variant)>
+    where
+        V: de::DeserializeSeed<'de>,
+    {
+        let val = seed.deserialize(&mut *self.de)?;
+        Ok((val, self))
+    }
+}
+
+// `VariantAccess` is provided to the `Visitor` to give it the ability to see
+// the content of the single variant that it decided to deserialize.
+impl<'de, 'a, R: Read> de::VariantAccess<'de> for Enum<'a, R> {
+    type Error = Error;
+
+    // If the `Visitor` expected this variant to be a unit variant, the input
+    // should have been the plain string case handled in `deserialize_enum`.
+    fn unit_variant(self) -> Result<()> {
+        Ok(())
+    }
+
+    // TODO: Still what is this??
+    fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value>
+    where
+        T: de::DeserializeSeed<'de>,
+    {
+        seed.deserialize(self.de)
+    }
+
+    fn tuple_variant<V>(self, len: usize, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        de::Deserializer::deserialize_tuple(self.de, len, visitor)
+    }
+
+    fn struct_variant<V>(
+        self,
+        fields: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        de::Deserializer::deserialize_tuple(self.de, fields.len(), visitor)
     }
 }
