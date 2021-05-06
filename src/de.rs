@@ -34,19 +34,6 @@ impl<R: Read> Deserializer<R> {
             Err(err) => Err(Error::Io(err)),
         }
     }
-
-    #[inline]
-    fn read_bytes(&mut self, n: usize) -> Result<Vec<u8>> {
-        let mut buf = Vec::new();
-        match self.rdr.by_ref().take(n as u64).read_to_end(&mut buf) {
-            Ok(m) if n == m => {
-                self.pos += n;
-                Ok(buf)
-            }
-            Ok(_) => self.error(ErrorCode::EOFWhileParsing),
-            Err(err) => Err(Error::Io(err)),
-        }
-    }
 }
 
 pub fn from_reader<'de, R: Read, T: Deserialize<'de>>(rdr: R) -> Result<T> {
