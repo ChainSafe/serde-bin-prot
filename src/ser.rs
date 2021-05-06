@@ -17,13 +17,27 @@ impl<W> Serializer<W>
 where
     W: std::io::Write,
 {
-    pub fn write(&mut self, buf: &[u8]) -> Result<()> {
+    fn write(&mut self, buf: &[u8]) -> Result<()> {
         self.writer.write_all(buf)?;
         Ok(())
     }
 
-    pub fn write_byte(&mut self, b: u8) -> Result<()> {
+    fn write_byte(&mut self, b: u8) -> Result<()> {
         self.write(&[b])
+    }
+
+    // for enums/variants with n variants the variant index
+    // is written out as follows:
+    // n <= 256    ->  write out lower 8 bits of n  (1 byte)
+    // n <= 65536  ->  write out lower 16 bits of n (2 bytes)
+    fn write_variant_index(&mut self, i: u32) -> Result<()> {
+        // WARNING: This does not implement the requirement above
+        // It is tricky to determine how many variants an enum has
+        // and therfore which of the above cases to use
+        // This assumes all enums have < 256 variants
+        // This probably catches 99% of cases but is not strictly
+        // in compliance with the protocol
+        self.write_byte(i as u8) // truncating downcast
     }
 }
 
@@ -125,17 +139,20 @@ where
         self.write(&v.to_le_bytes())
     }
 
-    // Serialize a char as a single-character string. Other formats may
-    // represent this differently.
+    // Chars are UTF-8 encoded and may be between 1 and 4 bytes
     fn serialize_char(self, v: char) -> Result<()> {
-        self.serialize_str(&v.to_string())
+        let buffer = [0_u8; 4]; // can fit any char
+        for i in 0..v.len_utf8() {
+            self.write_byte(buffer[i])?;
+        }
+        Ok(())
     }
 
-    // This only works for strings that don't require escape sequences but you
-    // get the idea. For example it would emit invalid JSON if the input string
-    // contains a '"' character.
-    fn serialize_str(self, _v: &str) -> Result<()> {
-        todo!()
+    // First the length of the string is written as a Nat0 (in characters?)
+    // Then the bytes of the string verbatim
+    fn serialize_str(self, v: &str) -> Result<()> {
+        self.writer.write_binprot_nat0(v.len() as u64)?;
+        self.write(v.as_bytes())
     }
 
     // just treat this like any other array for now
@@ -170,39 +187,12 @@ where
         self.serialize_unit()
     }
 
-    // When serializing a unit variant (or any other kind of variant), formats
-    // can choose whether to keep track of it by index or by name. Binary
-    // formats typically use the index of the variant and human-readable formats
-    // typically use the name.
-    fn serialize_unit_variant(
-        self,
-        _name: &'static str,
-        _variant_index: u32,
-        _variant: &'static str,
-    ) -> Result<()> {
-        todo!()
-    }
-
     // TODO: What even is this?
     fn serialize_newtype_struct<T>(self, _name: &'static str, value: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
         value.serialize(self)
-    }
-
-    // TODO: What even is this?
-    fn serialize_newtype_variant<T>(
-        self,
-        _name: &'static str,
-        _variant_index: u32,
-        _variant: &'static str,
-        _value: &T,
-    ) -> Result<()>
-    where
-        T: ?Sized + Serialize,
-    {
-        todo!()
     }
 
     // Now we get to the serialization of compound types.
@@ -237,33 +227,74 @@ where
         Ok(self)
     }
 
-    // Tuple variants are represented in JSON as `{ NAME: [DATA...] }`. Again
-    // this method is only responsible for the externally tagged representation.
-    fn serialize_tuple_variant(
-        self,
-        _name: &'static str,
-        _variant_index: u32,
-        _variant: &'static str,
-        _len: usize,
-    ) -> Result<Self::SerializeTupleVariant> {
-        todo!()
-    }
-
-    fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap> {
-        todo!()
+    // First the size of the hash table is written out as a Nat0.t.
+    // Then the writer iterates over each binding in the hash table
+    // and writes out the key followed by the value.
+    fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap> {
+        if let Some(len) = len {
+            self.writer.write_binprot_nat0(len as u64)?;
+            Ok(self)
+        } else { // size not provided. We cannot proceed
+            panic!()
+        }
     }
 
     fn serialize_struct(self, _name: &'static str, _len: usize) -> Result<Self::SerializeStruct> {
         Ok(self)
     }
 
+    // Variants/Enums
+    // 
+    // // Variants refer to the different possibilities of enums that hold data
+    // e.g. enum Message {
+    //     Quit,                          // unit variant
+    //     ChangeColor(i32, i32, i32),    // tuple variant
+    //     Move { x: i32, y: i32 },       // struct variant
+    // }
+    // In each of these cases the index of the variant, n, is written out 
+    // first followed by the data
+    fn serialize_unit_variant(
+        self,
+        _name: &'static str,
+        variant_index: u32,
+        _variant: &'static str,
+    ) -> Result<()> {
+        self.write_variant_index(variant_index)
+    }
+
+    fn serialize_tuple_variant(
+        self,
+        _name: &'static str,
+        variant_index: u32,
+        _variant: &'static str,
+        _len: usize,
+    ) -> Result<Self::SerializeTupleVariant> {
+        self.write_variant_index(variant_index)?;
+        Ok(self)
+    }
+
     fn serialize_struct_variant(
+        self,
+        _name: &'static str,
+        variant_index: u32,
+        _variant: &'static str,
+        _len: usize,
+    ) -> Result<Self::SerializeStructVariant> {
+        self.write_variant_index(variant_index)?;
+        Ok(self)
+    }
+
+    // TODO: What even is this?
+    fn serialize_newtype_variant<T>(
         self,
         _name: &'static str,
         _variant_index: u32,
         _variant: &'static str,
-        _len: usize,
-    ) -> Result<Self::SerializeStructVariant> {
+        _value: &T,
+    ) -> Result<()>
+    where
+        T: ?Sized + Serialize,
+    {
         todo!()
     }
 }
@@ -277,10 +308,9 @@ where
 // is called on the Serializer.
 impl<'a, W> ser::SerializeSeq for &'a mut Serializer<W>
 where
-    W: std::io::Write, // Must match the `Ok` type of the serializer.
+    W: std::io::Write,
 {
     type Ok = ();
-    // Must match the `Error` type of the serializer.
     type Error = Error;
 
     // Serialize a single element of the sequence.
@@ -292,7 +322,6 @@ where
     }
 
     fn end(self) -> Result<()> {
-        // nothing special required for an array end
         Ok(())
     }
 }
@@ -313,7 +342,6 @@ where
     }
 
     fn end(self) -> Result<()> {
-        // nothing special required for a tuple end
         Ok(())
     }
 }
@@ -344,8 +372,8 @@ where
 //
 // There is a third optional method on the `SerializeMap` trait. The
 // `serialize_entry` method allows serializers to optimize for the case where
-// key and value are both available simultaneously. In JSON it doesn't make a
-// difference so the default behavior for `serialize_entry` is fine.
+// key and value are both available simultaneously.
+// This is no more efficient in this case
 impl<'a, W> ser::SerializeMap for &'a mut Serializer<W>
 where
     W: std::io::Write,
@@ -353,33 +381,22 @@ where
     type Ok = ();
     type Error = Error;
 
-    // The Serde data model allows map keys to be any serializable type. JSON
-    // only allows string keys so the implementation below will produce invalid
-    // JSON if the key serializes as something other than a string.
-    //
-    // A real JSON serializer would need to validate that map keys are strings.
-    // This can be done by using a different Serializer to serialize the key
-    // (instead of `&mut **self`) and having that other serializer only
-    // implement `serialize_str` and return an error on any other data type.
-    fn serialize_key<T>(&mut self, _key: &T) -> Result<()>
+    fn serialize_key<T>(&mut self, key: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
-        todo!()
+        key.serialize(&mut **self)
     }
 
-    // It doesn't make a difference whether the colon is printed at the end of
-    // `serialize_key` or at the beginning of `serialize_value`. In this case
-    // the code is a bit simpler having it here.
-    fn serialize_value<T>(&mut self, _value: &T) -> Result<()>
+    fn serialize_value<T>(&mut self, value: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
-        todo!()
+        value.serialize(&mut **self)
     }
 
     fn end(self) -> Result<()> {
-        todo!()
+        Ok(())
     }
 }
 
@@ -405,13 +422,6 @@ where
     }
 }
 
-// Variants refer to the different possibilities of enums that hold data
-// e.g. enum Message {
-//     Quit,                          // unit variant
-//     ChangeColor(i32, i32, i32),    // tuple variant
-//     Move { x: i32, y: i32 },       // struct variant
-// }
-
 impl<'a, W> ser::SerializeTupleVariant for &'a mut Serializer<W>
 where
     W: std::io::Write,
@@ -419,15 +429,15 @@ where
     type Ok = ();
     type Error = Error;
 
-    fn serialize_field<T>(&mut self, _value: &T) -> Result<()>
+    fn serialize_field<T>(&mut self, value: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
-        todo!()
+        value.serialize(&mut **self)
     }
 
     fn end(self) -> Result<()> {
-        todo!()
+        Ok(())
     }
 }
 
@@ -438,14 +448,14 @@ where
     type Ok = ();
     type Error = Error;
 
-    fn serialize_field<T>(&mut self, _key: &'static str, _value: &T) -> Result<()>
+    fn serialize_field<T>(&mut self, _key: &'static str, value: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
-        todo!()
+        value.serialize(&mut **self)
     }
 
     fn end(self) -> Result<()> {
-        todo!()
+        Ok(())
     }
 }

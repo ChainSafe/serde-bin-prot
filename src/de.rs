@@ -224,7 +224,8 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
         visitor.visit_newtype_struct(self)
     }
 
-    // Parsing a seq involves reading the length and then parsing just as a tuple
+    // Parsing an unknown length seq (e.g array, lust) involves
+    // first reading the length as a Nat0 and then parsing the next values
     fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
