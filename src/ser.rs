@@ -232,9 +232,9 @@ where
     fn serialize_tuple_struct(
         self,
         _name: &'static str,
-        len: usize,
+        _len: usize,
     ) -> Result<Self::SerializeTupleStruct> {
-        self.serialize_seq(Some(len))
+        Ok(self)
     }
 
     // Tuple variants are represented in JSON as `{ NAME: [DATA...] }`. Again
@@ -326,15 +326,15 @@ where
     type Ok = ();
     type Error = Error;
 
-    fn serialize_field<T>(&mut self, _value: &T) -> Result<()>
+    fn serialize_field<T>(&mut self, value: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
-        todo!()
+        value.serialize(&mut **self)
     }
 
     fn end(self) -> Result<()> {
-        todo!()
+        Ok(())
     }
 }
 

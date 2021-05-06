@@ -46,7 +46,7 @@ impl TryFrom<(OcamlIntegerType, i64)> for OCamlInteger {
 fn test_serialize_integers() {
     for case_tuple in get_test_cases() {
         println!("{:?}", case_tuple);
-        let (ocaml_type, mut bytes, integer) = case_tuple;
+        let (ocaml_type, bytes, integer) = case_tuple;
 
         let ocaml_integer =
             OCamlInteger::try_from((ocaml_type, integer)).expect("Invalid test case");
@@ -63,6 +63,17 @@ fn test_serialize_integers() {
         }
         output.reverse(); // Not 100% sure why this is required. Seek confirmation.
         assert_eq!(output, bytes);
+    }
+}
+
+#[test]
+fn test_deserialize_integers() {
+    for case_tuple in get_test_cases() {
+        println!("{:?}", case_tuple);
+        let (ocaml_type, mut bytes, integer) = case_tuple;
+
+        let ocaml_integer =
+            OCamlInteger::try_from((ocaml_type, integer)).expect("Invalid test case");
 
         // test deserialization
         match ocaml_integer {

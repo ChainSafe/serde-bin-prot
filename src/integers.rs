@@ -1,6 +1,6 @@
 use crate::consts::*;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use num::FromPrimitive;
+use num::{FromPrimitive, Unsigned};
 ///
 /// Bin_Prod uses a variable length encoding for integers based on their size.
 ///
@@ -101,7 +101,7 @@ impl<W: io::Write + ?Sized> WriteBinProtIntegerExt for W {}
 // Extension trait for readers implementing io::Read to allow them to read a bin_prot encoded
 // integer
 pub trait ReadBinProtIntegerExt: io::Read {
-    fn read_binprot_integer<T: FromPrimitive + std::cmp::PartialOrd>(&mut self) -> Result<T, io::Error> {
+    fn read_binprot_integer<T: FromPrimitive>(&mut self) -> Result<T, io::Error> {
         let mut buf = [0];
         self.read_exact(&mut buf)?;
         // for the possibly signed cases, read them as signed and allow
@@ -122,7 +122,33 @@ pub trait ReadBinProtIntegerExt: io::Read {
             }
             byte0 => {
                 // first byte isnt a code so interpret it as a u8
-                assert!(byte0 < 0x80, "Invalid value stored in byte"); // sanity check
+                assert!(byte0 < 0x000000080, "Invalid value stored in byte"); // sanity check
+                T::from_u8(byte0)
+            }
+        }
+        .ok_or(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "Destination integer type too small for value or incorrect sign",
+        ))
+    }
+
+    fn read_binprot_nat0<T: FromPrimitive + Unsigned>(&mut self) -> Result<T, io::Error> {
+        let mut buf = [0];
+        self.read_exact(&mut buf)?;
+        // In this case it is always reading an unsigned integer
+        match buf[0] {
+            CODE_INT16 => { // positive or negative 16 bit int
+            	T::from_u16(self.read_u16::<LittleEndian>()?)
+            }
+            CODE_INT32 => { // positive or negative 32 bit int
+            	T::from_u32(self.read_u32::<LittleEndian>()?)
+            }
+            CODE_INT64 => { // positive or negative 64 bit int
+            	T::from_u64(self.read_u64::<LittleEndian>()?)
+            }
+            byte0 => {
+                // first byte isnt a code so interpret it as a u8
+                assert!(byte0 < 0x000000080, "Invalid value stored in byte"); // sanity check
                 T::from_u8(byte0)
             }
         }

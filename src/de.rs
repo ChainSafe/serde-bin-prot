@@ -182,19 +182,17 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
         unimplemented!()
     }
 
-    // An absent optional is represented as the JSON `null` and a present
-    // optional is represented as just the contained value.
-    //
-    // As commented in `Serializer` implementation, this is a lossy
-    // representation. For example the values `Some(())` and `None` both
-    // serialize as just `null`. Unfortunately this is typically what people
-    // expect when working with JSON. Other formats are encouraged to behave
-    // more intelligently if possible.
-    fn deserialize_option<V>(self, _visitor: V) -> Result<V::Value>
+    // An absent optional is represented as 0x00
+    // A present optional is 0x01 followed by the encoded value
+    fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        todo!()
+        match self.read_byte()? {
+            0x00 => visitor.visit_none(),
+            0x01 => visitor.visit_some(self),
+            _ => Err(Error::custom("Invalid bool byte")),
+        }
     }
 
     // In Serde, unit means an anonymous value containing no data.
@@ -203,7 +201,7 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
         V: Visitor<'de>,
     {
         match self.read_byte()? {
-            0x00 => visitor.visit_bool(false),
+            0x00 => visitor.visit_unit(),
             _ => Err(Error::custom("Invalid unit byte")),
         }
     }
@@ -231,29 +229,29 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: Visitor<'de>,
     {
-        let len = 0;
-        self.deserialize_tuple(len, visitor)
+        let len = self.rdr.read_binprot_nat0()?;
+        visitor.visit_seq(SeqAccess::new(self, len))
     }
 
     // Tuples look just like sequences
-    fn deserialize_tuple<V>(self, _len: usize, visitor: V) -> Result<V::Value>
+    fn deserialize_tuple<V>(self, len: usize, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        self.deserialize_seq(visitor)
+        visitor.visit_seq(SeqAccess::new(self, len))
     }
 
     // Tuple structs look just like sequences
     fn deserialize_tuple_struct<V>(
         self,
         _name: &'static str,
-        _len: usize,
+        len: usize,
         visitor: V,
     ) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        self.deserialize_seq(visitor)
+        visitor.visit_seq(SeqAccess::new(self, len))
     }
 
     // Much like `deserialize_seq` but calls the visitors `visit_map` method
@@ -270,13 +268,13 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     fn deserialize_struct<V>(
         self,
         _name: &'static str,
-        _fields: &'static [&'static str],
+        fields: &'static [&'static str],
         visitor: V,
     ) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        self.deserialize_seq(visitor)
+        visitor.visit_seq(SeqAccess::new(self, fields.len()))
     }
 
     fn deserialize_enum<V>(
@@ -314,5 +312,36 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
         V: Visitor<'de>,
     {
         self.deserialize_any(visitor)
+    }
+}
+
+struct SeqAccess<'a, R: Read + 'a> {
+    de: &'a mut Deserializer<R>,
+    len: usize,
+}
+
+impl<'a, R: Read + 'a> SeqAccess<'a, R> {
+    pub fn new(de: &'a mut Deserializer<R>, len: usize) -> Self {
+        Self {
+            de,
+            len
+        }
+    }
+}
+
+impl<'de: 'a, 'a, R: Read> de::SeqAccess<'de> for SeqAccess<'a, R> {
+    type Error = Error;
+
+    fn next_element_seed<T: de::DeserializeSeed<'de>>(&mut self, seed: T) -> Result<Option<T::Value>> {
+        if self.len > 0 {
+            self.len -= 1;
+            seed.deserialize(&mut *self.de).map(Some)
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn size_hint(&self) -> Option<usize> {
+        Some(self.len)
     }
 }
