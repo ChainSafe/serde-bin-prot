@@ -1,8 +1,7 @@
-
 use crate::error::{Error, ErrorCode, Result};
 use crate::integers::ReadBinProtIntegerExt;
 use byteorder::{LittleEndian, ReadBytesExt};
-use serde::de::{self, Error as DeError, Visitor, EnumAccess};
+use serde::de::{self, EnumAccess, Error as DeError, Visitor};
 use serde::Deserialize;
 use std::io::{BufReader, Read};
 
@@ -325,17 +324,17 @@ struct SeqAccess<'a, R: Read + 'a> {
 
 impl<'a, R: Read + 'a> SeqAccess<'a, R> {
     pub fn new(de: &'a mut Deserializer<R>, len: usize) -> Self {
-        Self {
-            de,
-            len
-        }
+        Self { de, len }
     }
 }
 
 impl<'de: 'a, 'a, R: Read> de::SeqAccess<'de> for SeqAccess<'a, R> {
     type Error = Error;
 
-    fn next_element_seed<T: de::DeserializeSeed<'de>>(&mut self, seed: T) -> Result<Option<T::Value>> {
+    fn next_element_seed<T: de::DeserializeSeed<'de>>(
+        &mut self,
+        seed: T,
+    ) -> Result<Option<T::Value>> {
         if self.len > 0 {
             self.len -= 1;
             seed.deserialize(&mut *self.de).map(Some)
@@ -369,7 +368,6 @@ impl<'de: 'a, 'a, R: Read> de::MapAccess<'de> for SeqAccess<'a, R> {
         Some(self.len)
     }
 }
-
 
 struct Enum<'a, R: Read> {
     de: &'a mut Deserializer<R>,
@@ -420,11 +418,7 @@ impl<'de, 'a, R: Read> de::VariantAccess<'de> for Enum<'a, R> {
         de::Deserializer::deserialize_tuple(self.de, len, visitor)
     }
 
-    fn struct_variant<V>(
-        self,
-        fields: &'static [&'static str],
-        visitor: V,
-    ) -> Result<V::Value>
+    fn struct_variant<V>(self, fields: &'static [&'static str], visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {

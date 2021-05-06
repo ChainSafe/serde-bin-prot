@@ -234,7 +234,8 @@ where
         if let Some(len) = len {
             self.writer.write_binprot_nat0(len as u64)?;
             Ok(self)
-        } else { // size not provided. We cannot proceed
+        } else {
+            // size not provided. We cannot proceed
             panic!()
         }
     }
@@ -244,14 +245,14 @@ where
     }
 
     // Variants/Enums
-    // 
+    //
     // // Variants refer to the different possibilities of enums that hold data
     // e.g. enum Message {
     //     Quit,                          // unit variant
     //     ChangeColor(i32, i32, i32),    // tuple variant
     //     Move { x: i32, y: i32 },       // struct variant
     // }
-    // In each of these cases the index of the variant, n, is written out 
+    // In each of these cases the index of the variant, n, is written out
     // first followed by the data
     fn serialize_unit_variant(
         self,

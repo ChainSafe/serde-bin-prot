@@ -1,4 +1,4 @@
-use serde_bin_prot::{to_writer, from_reader};
+use serde_bin_prot::{from_reader, to_writer};
 
 fn get_test_cases() -> Vec<(Vec<u8>, Vec<i64>)> {
     vec![
@@ -28,7 +28,6 @@ fn test_serialize_arrays() {
         assert_eq!(output, expected_bytes);
     }
 }
-
 
 #[test]
 fn test_deserialize_arrays() {

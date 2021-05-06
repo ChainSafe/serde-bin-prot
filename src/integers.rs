@@ -108,17 +108,21 @@ pub trait ReadBinProtIntegerExt: io::Read {
         // the conversion to fail if trying to convert a negative value
         // to an unsigned integer
         match buf[0] {
-            CODE_INT16 => { // positive or negative 16 bit int
-            	T::from_i16(self.read_i16::<LittleEndian>()?)
+            CODE_INT16 => {
+                // positive or negative 16 bit int
+                T::from_i16(self.read_i16::<LittleEndian>()?)
             }
-            CODE_INT32 => { // positive or negative 32 bit int
-            	T::from_i32(self.read_i32::<LittleEndian>()?)
+            CODE_INT32 => {
+                // positive or negative 32 bit int
+                T::from_i32(self.read_i32::<LittleEndian>()?)
             }
-            CODE_INT64 => { // positive or negative 64 bit int
-            	T::from_i64(self.read_i64::<LittleEndian>()?)
+            CODE_INT64 => {
+                // positive or negative 64 bit int
+                T::from_i64(self.read_i64::<LittleEndian>()?)
             }
-            CODE_NEG_INT8 => { // a negative signed i8
-            	T::from_i8(self.read_i8()?)
+            CODE_NEG_INT8 => {
+                // a negative signed i8
+                T::from_i8(self.read_i8()?)
             }
             byte0 => {
                 // first byte isnt a code so interpret it as a u8
@@ -137,14 +141,17 @@ pub trait ReadBinProtIntegerExt: io::Read {
         self.read_exact(&mut buf)?;
         // In this case it is always reading an unsigned integer
         match buf[0] {
-            CODE_INT16 => { // positive or negative 16 bit int
-            	T::from_u16(self.read_u16::<LittleEndian>()?)
+            CODE_INT16 => {
+                // positive or negative 16 bit int
+                T::from_u16(self.read_u16::<LittleEndian>()?)
             }
-            CODE_INT32 => { // positive or negative 32 bit int
-            	T::from_u32(self.read_u32::<LittleEndian>()?)
+            CODE_INT32 => {
+                // positive or negative 32 bit int
+                T::from_u32(self.read_u32::<LittleEndian>()?)
             }
-            CODE_INT64 => { // positive or negative 64 bit int
-            	T::from_u64(self.read_u64::<LittleEndian>()?)
+            CODE_INT64 => {
+                // positive or negative 64 bit int
+                T::from_u64(self.read_u64::<LittleEndian>()?)
             }
             byte0 => {
                 // first byte isnt a code so interpret it as a u8
