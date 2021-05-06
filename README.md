@@ -4,9 +4,13 @@
 
 A Rust crate that adds serde support for the [Bin_prot](https://github.com/janestreet/bin_prot) serialization format
 
+IMPORTANT: This is a work in progress. There is not currently support for all types or full test coverage.
+
 ## Usage
 
 Following Serde convention this crate exposes a `from_reader` and `to_writer` function to serialize/deserialize bin_prot encoded streams of bytes.
+
+This works with any Serde supported data type or any custom type annotated with `#[derive(Serialize, Deserialize)]`.
 
 Example:
 
