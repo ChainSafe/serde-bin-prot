@@ -1,10 +1,10 @@
 
+use crate::error::{Error, ErrorCode, Result};
+use crate::integers::ReadBinProtIntegerExt;
+use byteorder::{LittleEndian, ReadBytesExt};
+use serde::de::{self, Error as DeError, Visitor};
 use serde::Deserialize;
-use serde::de::{
-	self, Visitor, Error as DeError
-};
-use std::io::{Read, BufReader};
-use crate::error::{Error, Result, ErrorCode};
+use std::io::{BufReader, Read};
 
 pub struct Deserializer<R: Read> {
     rdr: BufReader<R>,
@@ -12,12 +12,12 @@ pub struct Deserializer<R: Read> {
 }
 
 impl<R: Read> Deserializer<R> {
-	pub fn from_reader(rdr: R) -> Self {
-		Self {
-			rdr: BufReader::new(rdr),
-			pos: 0
-		}
-	}
+    fn from_reader(rdr: R) -> Self {
+        Self {
+            rdr: BufReader::new(rdr),
+            pos: 0,
+        }
+    }
 
     fn error<T>(&self, reason: ErrorCode) -> Result<T> {
         Err(Error::Eval(reason, self.pos))
@@ -27,7 +27,10 @@ impl<R: Read> Deserializer<R> {
     fn read_byte(&mut self) -> Result<u8> {
         let mut buf = [0];
         match self.rdr.read(&mut buf) {
-            Ok(1) => { self.pos += 1; Ok(buf[0]) },
+            Ok(1) => {
+                self.pos += 1;
+                Ok(buf[0])
+            }
             Ok(_) => self.error(ErrorCode::EOFWhileParsing),
             Err(err) => Err(Error::Io(err)),
         }
@@ -37,7 +40,10 @@ impl<R: Read> Deserializer<R> {
     fn read_bytes(&mut self, n: usize) -> Result<Vec<u8>> {
         let mut buf = Vec::new();
         match self.rdr.by_ref().take(n as u64).read_to_end(&mut buf) {
-            Ok(m) if n == m => { self.pos += n; Ok(buf) },
+            Ok(m) if n == m => {
+                self.pos += n;
+                Ok(buf)
+            }
             Ok(_) => self.error(ErrorCode::EOFWhileParsing),
             Err(err) => Err(Error::Io(err)),
         }
@@ -52,11 +58,11 @@ pub fn from_reader<'de, R: Read, T: Deserialize<'de>>(rdr: R) -> Result<T> {
 
 impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     type Error = Error;
-    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_any<V>(self, _visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-    	todo!()
+        unimplemented!()
     }
 
     // bools are a single byte 0x00 or 0x01
@@ -64,81 +70,81 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: Visitor<'de>,
     {
-    	match self.read_byte()? {
-    		0x00 => visitor.visit_bool(false),
-    		0x01 => visitor.visit_bool(true),
-    		_ => Err(Error::custom("Invalid bool byte"))
-    	}
+        match self.read_byte()? {
+            0x00 => visitor.visit_bool(false),
+            0x01 => visitor.visit_bool(true),
+            _ => Err(Error::custom("Invalid bool byte")),
+        }
     }
 
     fn deserialize_i8<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        todo!()
+        visitor.visit_i8(self.rdr.read_binprot_integer()?)
     }
 
     fn deserialize_i16<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        todo!()
+        visitor.visit_i16(self.rdr.read_binprot_integer()?)
     }
 
     fn deserialize_i32<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        todo!()
+        visitor.visit_i32(self.rdr.read_binprot_integer()?)
     }
 
     fn deserialize_i64<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        todo!()
+        visitor.visit_i64(self.rdr.read_binprot_integer()?)
     }
 
     fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-    	visitor.visit_u8(self.read_byte()?)
+        visitor.visit_u8(self.rdr.read_binprot_integer()?)
     }
 
     fn deserialize_u16<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        todo!()
+        visitor.visit_u16(self.rdr.read_binprot_integer()?)
     }
 
     fn deserialize_u32<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        todo!()
+        visitor.visit_u32(self.rdr.read_binprot_integer()?)
     }
 
     fn deserialize_u64<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        todo!()
+        visitor.visit_u64(self.rdr.read_binprot_integer()?)
     }
 
-    fn deserialize_f32<V>(self, _visitor: V) -> Result<V::Value>
+    fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        todo!()
+        visitor.visit_f32(self.rdr.read_f32::<LittleEndian>()?)
     }
 
-    fn deserialize_f64<V>(self, _visitor: V) -> Result<V::Value>
+    fn deserialize_f64<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        todo!()
+        visitor.visit_f64(self.rdr.read_f64::<LittleEndian>()?)
     }
 
     fn deserialize_char<V>(self, _visitor: V) -> Result<V::Value>
@@ -148,7 +154,7 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
         todo!()
     }
 
-    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_str<V>(self, _visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
@@ -184,7 +190,7 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     // serialize as just `null`. Unfortunately this is typically what people
     // expect when working with JSON. Other formats are encouraged to behave
     // more intelligently if possible.
-    fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_option<V>(self, _visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
@@ -196,18 +202,14 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: Visitor<'de>,
     {
-    	match self.read_byte()? {
-    		0x00 => visitor.visit_bool(false),
-    		_ => Err(Error::custom("Invalid unit byte"))
-    	}    
+        match self.read_byte()? {
+            0x00 => visitor.visit_bool(false),
+            _ => Err(Error::custom("Invalid unit byte")),
+        }
     }
 
     // Unit struct means a named value containing no data.
-    fn deserialize_unit_struct<V>(
-        self,
-        _name: &'static str,
-        visitor: V,
-    ) -> Result<V::Value>
+    fn deserialize_unit_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
@@ -217,25 +219,20 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     // As is done here, serializers are encouraged to treat newtype structs as
     // insignificant wrappers around the data they contain. That means not
     // parsing anything other than the contained value.
-    fn deserialize_newtype_struct<V>(
-        self,
-        _name: &'static str,
-        visitor: V,
-    ) -> Result<V::Value>
+    fn deserialize_newtype_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
         visitor.visit_newtype_struct(self)
     }
 
-    // Deserialization of compound types like sequences and maps happens by
-    // passing the visitor an "Access" object that gives it the ability to
-    // iterate through the data contained in the sequence.
-    fn deserialize_seq<V>(mut self, visitor: V) -> Result<V::Value>
+    // Parsing a seq involves reading the length and then parsing just as a tuple
+    fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        todo!()
+        let len = 0;
+        self.deserialize_tuple(len, visitor)
     }
 
     // Tuples look just like sequences
@@ -262,11 +259,11 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     // Much like `deserialize_seq` but calls the visitors `visit_map` method
     // with a `MapAccess` implementation, rather than the visitor's `visit_seq`
     // method with a `SeqAccess` implementation.
-    fn deserialize_map<V>(mut self, visitor: V) -> Result<V::Value>
+    fn deserialize_map<V>(self, _visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-		todo!()
+        todo!()
     }
 
     // Structs look just like sequences
@@ -286,19 +283,19 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
         self,
         _name: &'static str,
         _variants: &'static [&'static str],
-        visitor: V,
+        _visitor: V,
     ) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-    	todo!()
+        todo!()
     }
 
-    fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_identifier<V>(self, _visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-    	todo!()
+        todo!()
     }
 
     // Like `deserialize_any` but indicates to the `Deserializer` that it makes

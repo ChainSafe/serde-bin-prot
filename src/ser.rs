@@ -1,8 +1,7 @@
-use crate::Nat0;
-use crate::consts::*;
 use crate::error::{Error, Result};
-use serde::{Serialize};
+use crate::integers::WriteBinProtIntegerExt;
 use serde::ser::{self, Error as SerError};
+use serde::Serialize;
 
 pub struct Serializer<W> {
     writer: W,
@@ -70,68 +69,50 @@ where
         self.write_byte(if v { 0x00 } else { 0x01 })
     }
 
-    // The little-endian format is used in the protocol for the contents of integers on all platforms
-
-    // For all Integer types:
-    // if the value is positive (including zero) and if it is:
-    // <  0x00000080  ->  lower 8 bits of the integer                     (1 byte)
-    // <  0x00008000  ->  CODE_INT16 followed by lower 16 bits of integer (3 bytes)
-    // <  0x80000000  ->  CODE_INT32 followed by lower 32 bits of integer (5 bytes)
-    // >= 0x80000000  ->  CODE_INT64 followed by all 64 bits of integer   (9 bytes)
-
-    // If the value is negative and if it is:
-    // >= -0x00000080  ->  CODE_NEG_INT8 followed by lower 8 bits of integer (2 bytes)
-    // >= -0x00008000  ->  CODE_INT16 followed by lower 16 bits of integer   (3 bytes)
-    // >= -0x80000000  ->  CODE_INT32 followed by lower 32 bits of integer   (5 bytes)
-    // <  -0x80000000  ->  CODE_INT64 followed by all 64 bits of integer     (9 bytes)
-
+    // See the integers.rs for implementation of write_binprot_integer()
     fn serialize_i8(self, v: i8) -> Result<()> {
-        self.serialize_i64(v.into())
+        self.writer.write_binprot_integer(v)?;
+        Ok(())
     }
 
     fn serialize_i16(self, v: i16) -> Result<()> {
-        self.serialize_i64(v.into())
+        self.writer.write_binprot_integer(v)?;
+        Ok(())
     }
 
     fn serialize_i32(self, v: i32) -> Result<()> {
-        self.serialize_i64(v.into())
+        self.writer.write_binprot_integer(v)?;
+        Ok(())
     }
 
     fn serialize_i64(self, v: i64) -> Result<()> {
-        // this is where all the integer serialization logic lives
-        if v >= 0 { // positive or zero case
-            match v {
-                _ if v < 0x00000080 => { self.write(&v.to_le_bytes()[..1]) }
-                _ if v < 0x00008000 => { self.write_byte(CODE_INT16)?; self.write(&v.to_le_bytes()[..2]) }
-                _ if v < 0x80000000 => { self.write_byte(CODE_INT32)?; self.write(&v.to_le_bytes()[..4]) }
-                _ => { self.write_byte(CODE_INT64)?; self.write(&v.to_le_bytes()) }
-            }
-        } else { // negative case
-            match v {
-                _ if v >= -0x00000080 => { self.write_byte(CODE_NEG_INT8)?; self.write(&v.to_le_bytes()[..1]) }
-                _ if v >= -0x00008000 => { self.write_byte(CODE_INT16)?; self.write(&v.to_le_bytes()[..2]) }
-                _ if v >= -0x80000000 => { self.write_byte(CODE_INT32)?; self.write(&v.to_le_bytes()[..4]) }
-                _ => { self.write_byte(CODE_INT64)?; self.write(&v.to_le_bytes()) }
-            }
-        }
+        self.writer.write_binprot_integer(v)?;
+        Ok(())
     }
 
-    // Unsigned forms just cast to signed forms then serialize
-    // TODO: There could probably be some optimization done here
     fn serialize_u8(self, v: u8) -> Result<()> {
-        self.serialize_i64(v as i64)
+        self.writer.write_binprot_integer(v)?;
+        Ok(())
     }
 
     fn serialize_u16(self, v: u16) -> Result<()> {
-        self.serialize_i64(v as i64)
+        self.writer.write_binprot_integer(v)?;
+        Ok(())
     }
 
     fn serialize_u32(self, v: u32) -> Result<()> {
-        self.serialize_i64(v as i64)
+        self.writer.write_binprot_integer(v)?;
+        Ok(())
     }
 
     fn serialize_u64(self, v: u64) -> Result<()> {
-        self.serialize_i64(v as i64)
+        // Requires cast to i64 as u64 does not implement Into<i64>
+        // This is because a u64 can hold larger positive values than an i64 as it
+        // doesn't require reserving the sign bit.
+        // This is ok to do as it is never compared with a value larger than 0x80000000
+        // and it is cast back to a u64 before it is serialized. Just something to be aware of.
+        self.writer.write_binprot_integer(v as i64)?;
+        Ok(())
     }
 
     // Floats are written out according to the 64 bit IEEE 754 floating point standard
@@ -232,8 +213,7 @@ where
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
         if let Some(len) = len {
             // write the output length first
-            let len_nat0 = Nat0::from(len);
-            len_nat0.serialize(&mut *self)?;
+            self.writer.write_binprot_nat0(len as u64)?;
             Ok(self) // pass self as the handler for writing the elements
         } else {
             Err(Error::custom("Size not provided"))
@@ -293,8 +273,6 @@ where
 // method and followed by zero or more calls to serialize individual elements of
 // the compound type and one call to end the compound type.
 
-
-
 // This impl is SerializeSeq so these methods are called after `serialize_seq`
 // is called on the Serializer.
 impl<'a, W> ser::SerializeSeq for &'a mut Serializer<W>
@@ -315,7 +293,8 @@ where
 
     fn end(self) -> Result<()> {
         // nothing special required for an array end
-        Ok(())    }
+        Ok(())
+    }
 }
 
 // Tuples are serialized just as the elements written consecutively
