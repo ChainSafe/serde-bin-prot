@@ -1,6 +1,6 @@
 # Serde Bin_prot
 
-[![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-blue.svg)](http://www.gnu.org/licenses/lgpl-3.0)
+![example workflow](https://github.com/ChainSafe/serde-bin-prot/actions/workflows/build-and-test.yml/badge.svg) [![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-blue.svg)](http://www.gnu.org/licenses/lgpl-3.0)
 
 A Rust crate that adds serde support for the [Bin_prot](https://github.com/janestreet/bin_prot) serialization format
 
