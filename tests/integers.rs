@@ -5,10 +5,10 @@
 /// Note the bytes are little-endian encoded.
 ///
 /// These tests can be parsed and executed directly from their source
-mod integers_repr_tests_64bit_smol;
+mod integers_test_cases;
 
 use core::convert::TryFrom;
-use integers_repr_tests_64bit_smol::{get_test_cases, OcamlIntegerType};
+use integers_test_cases::{get_test_cases, OcamlIntegerType};
 use serde_bin_prot::{from_reader, to_writer, Nat0};
 
 #[derive(Debug)]

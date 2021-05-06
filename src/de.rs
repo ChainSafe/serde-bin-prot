@@ -371,7 +371,6 @@ impl<'de: 'a, 'a, R: Read> de::MapAccess<'de> for SeqAccess<'a, R> {
 }
 
 
-
 struct Enum<'a, R: Read> {
     de: &'a mut Deserializer<R>,
 }
@@ -384,9 +383,6 @@ impl<'a, 'de, R: Read> Enum<'a, R> {
 
 // `EnumAccess` is provided to the `Visitor` to give it the ability to determine
 // which variant of the enum is supposed to be deserialized.
-//
-// Note that all enum deserialization methods in Serde refer exclusively to the
-// "externally tagged" enum representation.
 impl<'de, 'a, R: Read> EnumAccess<'de> for Enum<'a, R> {
     type Error = Error;
     type Variant = Self;
@@ -405,8 +401,6 @@ impl<'de, 'a, R: Read> EnumAccess<'de> for Enum<'a, R> {
 impl<'de, 'a, R: Read> de::VariantAccess<'de> for Enum<'a, R> {
     type Error = Error;
 
-    // If the `Visitor` expected this variant to be a unit variant, the input
-    // should have been the plain string case handled in `deserialize_enum`.
     fn unit_variant(self) -> Result<()> {
         Ok(())
     }
