@@ -42,4 +42,4 @@ Distributed under the GPL-3 License. See LICENSE for more information.
 
 ## Contact
 
-{Willem Olding](willem@chainsafe.io)
+[Willem Olding](willem@chainsafe.io)
