@@ -1,7 +1,6 @@
 # Serde Bin_prot
 
-![example workflow](https://github.com/ChainSafe/serde-bin-prot/actions/workflows/build-and-test.yml/badge.svg) [![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-blue.svg)](http://www.gnu.org/licenses/lgpl-3.0)
-
+![example workflow](https://github.com/ChainSafe/serde-bin-prot/actions/workflows/build-and-test.yml/badge.svg) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 A Rust crate that adds serde support for the [Bin_prot](https://github.com/janestreet/bin_prot) serialization format
 
 IMPORTANT: This is a work in progress. There is not currently support for all types or full test coverage.
