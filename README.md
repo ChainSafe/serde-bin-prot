@@ -41,7 +41,7 @@ cargo test
 
 ## Licence
 
-Distributed under the GPL-3 License. See LICENSE for more information.
+Distributed under the Apache-2.0 License. See LICENSE for more information.
 
 ## Contact
 
