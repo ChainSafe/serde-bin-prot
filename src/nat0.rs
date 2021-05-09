@@ -3,7 +3,7 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use shrinkwraprs::Shrinkwrap;
-use std::fmt;
+use core::fmt;
 use std::io::Cursor;
 
 // This type encodes natural numbers including zero.

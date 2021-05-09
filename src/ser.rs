@@ -1,3 +1,4 @@
+use std::io::Write;
 use crate::error::{Error, Result};
 use crate::integers::WriteBinProtIntegerExt;
 use serde::ser::{self, Error as SerError};
@@ -15,7 +16,7 @@ impl<W> Serializer<W> {
 
 impl<W> Serializer<W>
 where
-    W: std::io::Write,
+    W: Write,
 {
     fn write(&mut self, buf: &[u8]) -> Result<()> {
         self.writer.write_all(buf)?;
@@ -43,7 +44,7 @@ where
 
 pub fn to_writer<W, T>(writer: &mut W, value: &T) -> Result<()>
 where
-    W: std::io::Write,
+    W: Write,
     T: Serialize,
 {
     value.serialize(&mut Serializer::new(writer))
@@ -51,7 +52,7 @@ where
 
 impl<'a, W> ser::Serializer for &'a mut Serializer<W>
 where
-    W: std::io::Write,
+    W: Write,
 {
     // The output type produced by this `Serializer` during successful
     // serialization. Most serializers that produce text or binary output should
@@ -317,7 +318,7 @@ where
 // is called on the Serializer.
 impl<'a, W> ser::SerializeSeq for &'a mut Serializer<W>
 where
-    W: std::io::Write,
+    W: Write,
 {
     type Ok = ();
     type Error = Error;
@@ -338,7 +339,7 @@ where
 // Tuples are serialized just as the elements written consecutively
 impl<'a, W> ser::SerializeTuple for &'a mut Serializer<W>
 where
-    W: std::io::Write,
+    W: Write,
 {
     type Ok = ();
     type Error = Error;
@@ -358,7 +359,7 @@ where
 // Same thing but for tuple structs.
 impl<'a, W> ser::SerializeTupleStruct for &'a mut Serializer<W>
 where
-    W: std::io::Write,
+    W: Write,
 {
     type Ok = ();
     type Error = Error;
@@ -385,7 +386,7 @@ where
 // This is no more efficient in this case
 impl<'a, W> ser::SerializeMap for &'a mut Serializer<W>
 where
-    W: std::io::Write,
+    W: Write,
 {
     type Ok = ();
     type Error = Error;
@@ -414,7 +415,7 @@ where
 // keys are ignored
 impl<'a, W> ser::SerializeStruct for &'a mut Serializer<W>
 where
-    W: std::io::Write,
+    W: Write,
 {
     type Ok = ();
     type Error = Error;
@@ -433,7 +434,7 @@ where
 
 impl<'a, W> ser::SerializeTupleVariant for &'a mut Serializer<W>
 where
-    W: std::io::Write,
+    W: Write,
 {
     type Ok = ();
     type Error = Error;
@@ -452,7 +453,7 @@ where
 
 impl<'a, W> ser::SerializeStructVariant for &'a mut Serializer<W>
 where
-    W: std::io::Write,
+    W: Write,
 {
     type Ok = ();
     type Error = Error;

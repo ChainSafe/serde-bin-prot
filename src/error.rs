@@ -2,9 +2,9 @@
 
 use serde::{de, ser};
 use std::error;
-use std::fmt;
 use std::io;
-use std::result;
+use core::fmt;
+use core::result;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum ErrorCode {
