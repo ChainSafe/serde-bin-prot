@@ -300,9 +300,11 @@ where
     }
 
     #[cfg(not(feature = "std"))]
-    fn collect_str<T>(self, _: &T) -> Result<()> 
-        where T: ?Sized + core::fmt::Display {
-            todo!()
+    fn collect_str<T>(self, _value: &T) -> Result<()>
+    where
+        T: ?Sized + core::fmt::Display,
+    {
+        todo!()
     }
 }
 
