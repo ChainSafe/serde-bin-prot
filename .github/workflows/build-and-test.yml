@@ -17,6 +17,8 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - run: cargo build --release --all-features
-      - run: cargo test
+      - run: cargo check --release --all-features
+      - run: cargo check --release --no-default-features
+      - run: cargo test --all-features
+      - run: cargo test --no-default-features
       - run: cargo fmt -- --check
