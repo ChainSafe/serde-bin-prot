@@ -298,6 +298,12 @@ where
     {
         todo!()
     }
+
+    #[cfg(not(feature = "std"))]
+    fn collect_str<T>(self, _: &T) -> Result<()> 
+        where T: ?Sized + core::fmt::Display {
+            todo!()
+    }
 }
 
 // The following 7 impls deal with the serialization of compound types like
