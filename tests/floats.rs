@@ -1,62 +1,55 @@
 use serde_bin_prot::{from_reader, to_writer};
-use std::f64::INFINITY;
+use std::f64;
+use std::fmt::Write;
+use difference::Changeset;
 
-fn get_test_cases() -> Vec<(Vec<u8>, f64)> {
-    vec![
-        (
-            vec![0x3c, 0xb0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-            2.2204460492503131E-16,
-        ),
-        (
-            vec![0x7f, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-            INFINITY,
-        ),
-        (
-            vec![0x7f, 0xef, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
-            1.7976931348623157E+308,
-        ),
-        (
-            vec![0x7f, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-            INFINITY,
-        ),
-        (
-            vec![0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-            2.2250738585072014E-308,
-        ),
-        (
-            vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01],
-            4.94065645841247E-324,
-        ),
-        (
-            vec![0xff, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-            -INFINITY,
-        ),
-        (vec![0xbf, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], -1.0),
-        (
-            vec![0xff, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-            -INFINITY,
-        ),
-        (vec![0x3f, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], 1.0),
-        (vec![0x3e, 0x7a, 0xd7, 0xf2, 0x9a, 0xbc, 0xaf, 0x48], 1E-07),
-        (vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], 0.0),
-    ]
-}
+mod common;
+use common::print_byte_array;
+
+const MAX_BYTES: usize = 8;
+
+const EXPECTED: &str = r#"
+7f f0 00 00 00 00 00 00 -> inf
+ff f0 00 00 00 00 00 00 -> -inf
+3c b0 00 00 00 00 00 00 -> 2.2204460492503131E-16
+7f ef ff ff ff ff ff ff -> 1.7976931348623157E308
+bf f0 00 00 00 00 00 00 -> -1.0000000000000000E0
+3f f0 00 00 00 00 00 00 -> 1.0000000000000000E0
+00 00 00 00 00 00 00 00 -> 0.0000000000000000E0
+"#;
+
+const TEST_CASES: &[f64] = &[
+    f64::INFINITY,
+    f64::NEG_INFINITY, // min positive subnormal
+    f64::EPSILON,
+    f64::MAX, // max finnite
+    -1.0,
+    1.0,
+    0.0,
+];
 
 #[test]
 fn test_serialize_floats() {
-    for (expected_bytes, val) in get_test_cases() {
+    let mut buf = String::new();
+    writeln!(&mut buf).unwrap();
+    for val in TEST_CASES {
         let mut output = Vec::<u8>::new();
         to_writer(&mut output, &val).unwrap();
-        output.reverse();
-        assert_eq!(output, expected_bytes);
+        print_byte_array(&mut buf, &output, MAX_BYTES);
+        writeln!(&mut buf, "-> {:.16E}", val).expect("its cooked");
     }
+
+    let cs = Changeset::new(&buf, EXPECTED, "");
+    println!("{}", cs);
+    assert_eq!(cs.distance, 0)
 }
 
 #[test]
-fn test_deserialize_floats() {
-    for (mut bytes, expected_val) in get_test_cases() {
-        bytes.reverse();
-        let value: f64 = from_reader(bytes.as_slice()).expect("Deserialization failed");
-        assert_eq!(value, expected_val);
+fn test_roundtrip_floats() {
+    for val in TEST_CASES {
+        let mut output = Vec::<u8>::new();
+        to_writer(&mut output, &val).unwrap();
+        let re_val: f64 = from_reader(output.as_slice()).unwrap();
+        assert_eq!(val, &re_val)
     }
 }
