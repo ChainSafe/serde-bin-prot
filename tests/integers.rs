@@ -9,12 +9,12 @@ mod integers_test_cases;
 
 use core::convert::TryFrom;
 use integers_test_cases::{get_test_cases, OcamlIntegerType};
-use serde_bin_prot::{from_reader, to_writer, Nat0};
+use serde_bin_prot::{from_reader, to_writer};
 
 #[derive(Debug)]
 enum OCamlInteger {
     Int(i64),
-    Nat0(Nat0),
+    Nat0(u64),
 }
 
 impl TryFrom<(OcamlIntegerType, i64)> for OCamlInteger {
@@ -35,7 +35,7 @@ impl TryFrom<(OcamlIntegerType, i64)> for OCamlInteger {
             | OcamlIntegerType::network64_int64 => Ok(Self::Int(i.1)),
             OcamlIntegerType::nat0 => {
                 let v = u64::try_from(i.1).map_err(|_| "Tryed to parse signed int to nat0")?;
-                Ok(Self::Nat0(Nat0::new(v)))
+                Ok(Self::Nat0(i.1 as u64))
             }
             OcamlIntegerType::variant_int => Err("variant_int not supported (yet)".to_string()),
         }

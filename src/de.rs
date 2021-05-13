@@ -1,5 +1,5 @@
 use crate::error::{Error, ErrorCode, Result};
-use crate::integers::ReadBinProtIntegerExt;
+use crate::ReadBinProtExt;
 use byteorder::{LittleEndian, ReadBytesExt};
 use serde::de::{self, EnumAccess, Error as DeError, Visitor};
 use serde::Deserialize;
@@ -63,60 +63,63 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
         }
     }
 
+
+    // all native integer types targets are interpreted as Integer
+    // and will attempt to fit in to native byte size and error if too large
     fn deserialize_i8<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        visitor.visit_i8(self.rdr.read_binprot_integer()?)
+        visitor.visit_i8(self.rdr.bin_read_integer()?)
     }
 
     fn deserialize_i16<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        visitor.visit_i16(self.rdr.read_binprot_integer()?)
+        visitor.visit_i16(self.rdr.bin_read_integer()?)
     }
 
     fn deserialize_i32<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        visitor.visit_i32(self.rdr.read_binprot_integer()?)
+        visitor.visit_i32(self.rdr.bin_read_integer()?)
     }
 
     fn deserialize_i64<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        visitor.visit_i64(self.rdr.read_binprot_integer()?)
+        visitor.visit_i64(self.rdr.bin_read_integer()?)
     }
 
     fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        visitor.visit_u8(self.rdr.read_binprot_integer()?)
+        visitor.visit_u8(self.rdr.bin_read_integer()?)
     }
 
     fn deserialize_u16<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        visitor.visit_u16(self.rdr.read_binprot_integer()?)
+        visitor.visit_u16(self.rdr.bin_read_integer()?)
     }
 
     fn deserialize_u32<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        visitor.visit_u32(self.rdr.read_binprot_integer()?)
+        visitor.visit_u32(self.rdr.bin_read_integer()?)
     }
 
     fn deserialize_u64<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        visitor.visit_u64(self.rdr.read_binprot_integer()?)
+        visitor.visit_u64(self.rdr.bin_read_integer()?)
     }
 
     fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value>
@@ -216,7 +219,7 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: Visitor<'de>,
     {
-        let len = self.rdr.read_binprot_nat0()?;
+        let len = self.rdr.bin_read_nat0()?;
         visitor.visit_seq(SeqAccess::new(self, len))
     }
 
@@ -249,7 +252,7 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: Visitor<'de>,
     {
-        let len = self.rdr.read_binprot_nat0()?;
+        let len = self.rdr.bin_read_nat0()?;
         visitor.visit_map(SeqAccess::new(self, len))
     }
 

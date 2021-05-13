@@ -1,7 +1,7 @@
 use crate::error::{Error, Result};
-use crate::integers::WriteBinProtIntegerExt;
 use serde::ser::{self, Error as SerError};
 use serde::Serialize;
+use crate::WriteBinProtExt;
 
 pub struct Serializer<W> {
     writer: W,
@@ -83,39 +83,39 @@ where
         self.write_byte(if v { 0x00 } else { 0x01 })
     }
 
-    // See the integers.rs for implementation of write_binprot_integer()
+    // All integers by default get mapped to the Integer bin_prot
     fn serialize_i8(self, v: i8) -> Result<()> {
-        self.writer.write_binprot_integer(v)?;
+        self.writer.bin_write_integer(v)?;
         Ok(())
     }
 
     fn serialize_i16(self, v: i16) -> Result<()> {
-        self.writer.write_binprot_integer(v)?;
+        self.writer.bin_write_integer(v)?;
         Ok(())
     }
 
     fn serialize_i32(self, v: i32) -> Result<()> {
-        self.writer.write_binprot_integer(v)?;
+        self.writer.bin_write_integer(v)?;
         Ok(())
     }
 
     fn serialize_i64(self, v: i64) -> Result<()> {
-        self.writer.write_binprot_integer(v)?;
+        self.writer.bin_write_integer(v)?;
         Ok(())
     }
 
     fn serialize_u8(self, v: u8) -> Result<()> {
-        self.writer.write_binprot_integer(v)?;
+        self.writer.bin_write_integer(v)?;
         Ok(())
     }
 
     fn serialize_u16(self, v: u16) -> Result<()> {
-        self.writer.write_binprot_integer(v)?;
+        self.writer.bin_write_integer(v)?;
         Ok(())
     }
 
     fn serialize_u32(self, v: u32) -> Result<()> {
-        self.writer.write_binprot_integer(v)?;
+        self.writer.bin_write_integer(v)?;
         Ok(())
     }
 
@@ -125,7 +125,7 @@ where
         // doesn't require reserving the sign bit.
         // This is ok to do as it is never compared with a value larger than 0x80000000
         // and it is cast back to a u64 before it is serialized. Just something to be aware of.
-        self.writer.write_binprot_integer(v as i64)?;
+        self.writer.bin_write_integer(v as i64)?;
         Ok(())
     }
 
@@ -151,7 +151,7 @@ where
     // First the length of the string is written as a Nat0 (in characters?)
     // Then the bytes of the string verbatim
     fn serialize_str(self, v: &str) -> Result<()> {
-        self.writer.write_binprot_nat0(v.len() as u64)?;
+        self.writer.bin_write_nat0(v.len() as u64)?;
         self.write(v.as_bytes())
     }
 
@@ -203,7 +203,7 @@ where
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
         if let Some(len) = len {
             // write the output length first
-            self.writer.write_binprot_nat0(len as u64)?;
+            self.writer.bin_write_nat0(len as u64)?;
             Ok(self) // pass self as the handler for writing the elements
         } else {
             Err(Error::custom("Size not provided"))
@@ -232,7 +232,7 @@ where
     // and writes out the key followed by the value.
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap> {
         if let Some(len) = len {
-            self.writer.write_binprot_nat0(len as u64)?;
+            self.writer.bin_write_nat0(len as u64)?;
             Ok(self)
         } else {
             // size not provided. We cannot proceed

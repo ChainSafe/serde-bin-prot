@@ -19,22 +19,22 @@ fn get_test_cases() -> Vec<(Vec<u8>, Vec<i64>)> {
     ]
 }
 
-#[test]
-fn test_serialize_arrays() {
-    for (expected_bytes, val) in get_test_cases() {
-        let mut output = Vec::<u8>::new();
-        to_writer(&mut output, &val).unwrap();
-        output.reverse();
-        assert_eq!(output, expected_bytes);
-    }
-}
+// #[test]
+// fn test_serialize_arrays() {
+//     for (expected_bytes, val) in get_test_cases() {
+//         let mut output = Vec::<u8>::new();
+//         to_writer(&mut output, &val).unwrap();
+//         output.reverse();
+//         assert_eq!(output, expected_bytes);
+//     }
+// }
 
-#[test]
-fn test_deserialize_arrays() {
-    for (mut bytes, expected_val) in get_test_cases() {
-        bytes.reverse();
+// #[test]
+// fn test_deserialize_arrays() {
+//     for (mut bytes, expected_val) in get_test_cases() {
+//         bytes.reverse();
 
-        let value: Vec<i64> = from_reader(bytes.as_slice()).expect("Deserialization failed");
-        assert_eq!(value, expected_val);
-    }
-}
+//         let value: Vec<i64> = from_reader(bytes.as_slice()).expect("Deserialization failed");
+//         assert_eq!(value, expected_val);
+//     }
+// }
