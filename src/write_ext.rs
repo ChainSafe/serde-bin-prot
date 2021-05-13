@@ -1,21 +1,31 @@
 use crate::consts::*;
-use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use num::{FromPrimitive, Unsigned};
+use byteorder::{LittleEndian, WriteBytesExt};
+
 
 /// Extension traits for io::Read and io::Write to read and
 /// write bin_prot encoded types
 use std::io;
 
-// extension trait for writers implementing io::Write to allow them to write any integer
-// in bin_prot form.
-// This accepts any integer which can be converted to an i64 (which is all integers in Rust)
+// extension trait for writers implementing io::Write to allow them to write 
+// the primitive values for bin_prot
 pub trait WriteBinProtExt: io::Write {
+    
     fn bin_write_unit(&mut self) -> Result<usize, io::Error> {
         self.write_u8(0x00).map(|_| 1)
     }
 
     fn bin_write_bool(&mut self, b: bool) -> Result<usize, io::Error> {
         self.write_u8(if b { 0x01 } else { 0x00 }).map(|_| 1)
+    }
+
+    // chars are utf-8 so can be 1-4 bytes long
+    fn bin_write_char(&mut self, c: char) -> Result<usize, io::Error> {
+        let buffer = [0_u8; 4]; // can fit any char
+        let len = c.len_utf8();
+        for i in 0..len {
+            self.write_u8(buffer[i])?;
+        }
+        Ok(len)
     }
 
     fn bin_write_integer<T: Into<i64>>(&mut self, n: T) -> Result<usize, io::Error> {
@@ -84,6 +94,14 @@ pub trait WriteBinProtExt: io::Write {
                 self.write_u64::<LittleEndian>(n as u64).map(|_| 9)
             }
         }
+    }
+
+    fn bin_write_float32(&mut self, f: &f32) -> Result<usize, io::Error> {
+        self.write(&f.to_le_bytes()).map(|_| 4)
+    }
+
+    fn bin_write_float64(&mut self, f: &f64) -> Result<usize, io::Error> {
+        self.write(&f.to_le_bytes()).map(|_| 8)
     }
 }
 

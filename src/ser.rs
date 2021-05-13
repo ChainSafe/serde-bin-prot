@@ -130,22 +130,19 @@ where
         Ok(())
     }
 
-    // Floats are written out according to the 64 bit IEEE 754 floating point standard
-    // i.e. their memory representation (in OCaml) is copied verbatim.
     fn serialize_f32(self, v: f32) -> Result<()> {
-        self.serialize_f64(f64::from(v))
+        self.writer.bin_write_float32(&v)?;
+        Ok(())
     }
 
     fn serialize_f64(self, v: f64) -> Result<()> {
-        self.write(&v.to_le_bytes())
+        self.writer.bin_write_float64(&v)?;
+        Ok(())
     }
 
     // Chars are UTF-8 encoded and may be between 1 and 4 bytes
     fn serialize_char(self, v: char) -> Result<()> {
-        let buffer = [0_u8; 4]; // can fit any char
-        for i in 0..v.len_utf8() {
-            self.write_byte(buffer[i])?;
-        }
+        self.writer.bin_write_char(v)?;
         Ok(())
     }
 
