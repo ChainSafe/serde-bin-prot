@@ -63,7 +63,6 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
         }
     }
 
-
     // all native integer types targets are interpreted as Integer
     // and will attempt to fit in to native byte size and error if too large
     fn deserialize_i8<V>(self, visitor: V) -> Result<V::Value>

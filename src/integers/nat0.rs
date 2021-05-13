@@ -1,10 +1,10 @@
-use std::io::Cursor;
 use crate::consts::*;
-use byteorder::{LittleEndian, ReadBytesExt};
-use num::{Unsigned};
-use serde::ser::Serializer;
-use serde::de::{self, Visitor, Deserializer};
 use crate::write_ext::WriteBinProtExt;
+use byteorder::{LittleEndian, ReadBytesExt};
+use num::Unsigned;
+use serde::de::{self, Deserializer, Visitor};
+use serde::ser::Serializer;
+use std::io::Cursor;
 ///
 /// Bin_Prod uses a variable length encoding for integers based on their size.
 ///
@@ -24,9 +24,10 @@ use crate::write_ext::WriteBinProtExt;
 /// The little-endian format is used in the protocol for the contents of integers on all platforms
 ///
 
-
 pub fn serialize<T, S>(n: &T, s: S) -> Result<S::Ok, S::Error>
-    where S: Serializer, T: Unsigned + Into<u64> + Copy
+where
+    S: Serializer,
+    T: Unsigned + Into<u64> + Copy,
 {
     let mut bytes = Vec::<u8>::new();
     bytes.bin_write_nat0(*n).unwrap();
@@ -39,9 +40,7 @@ impl<'de> Visitor<'de> for Nat0Visitor {
     type Value = usize;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str(
-            "A bin_prot encoded integer (1, 3, 5, or 9 bytes depending on size)",
-        )
+        formatter.write_str("A bin_prot encoded integer (1, 3, 5, or 9 bytes depending on size)")
     }
 
     fn visit_bytes<E>(self, value: &[u8]) -> Result<Self::Value, E>
@@ -51,15 +50,18 @@ impl<'de> Visitor<'de> for Nat0Visitor {
         let mut rdr = Cursor::new(value);
         let byte = rdr.read_u8().unwrap();
         let result = match byte {
-            CODE_INT16 => rdr.read_i16::<LittleEndian>()
-                    .map_err(|_| de::Error::custom("could not read enough bytes for Nat0"))?
-                    as usize,
-            CODE_INT32 => rdr.read_i32::<LittleEndian>()
-                    .map_err(|_| de::Error::custom("could not read enough bytes for Nat0"))?
-                    as usize,
-            CODE_INT64 => rdr.read_u64::<LittleEndian>()
-                    .map_err(|_| de::Error::custom("could not read enough bytes for Nat0"))?
-                    as usize,
+            CODE_INT16 => rdr
+                .read_i16::<LittleEndian>()
+                .map_err(|_| de::Error::custom("could not read enough bytes for Nat0"))?
+                as usize,
+            CODE_INT32 => rdr
+                .read_i32::<LittleEndian>()
+                .map_err(|_| de::Error::custom("could not read enough bytes for Nat0"))?
+                as usize,
+            CODE_INT64 => rdr
+                .read_u64::<LittleEndian>()
+                .map_err(|_| de::Error::custom("could not read enough bytes for Nat0"))?
+                as usize,
             byte => byte as usize,
         };
         Ok(result)
@@ -67,7 +69,8 @@ impl<'de> Visitor<'de> for Nat0Visitor {
 }
 
 pub fn deserialize<'de, D>(d: D) -> Result<usize, D::Error>
-    where D: Deserializer<'de>
+where
+    D: Deserializer<'de>,
 {
     d.deserialize_bytes(Nat0Visitor)
 }

@@ -1,7 +1,7 @@
 use crate::error::{Error, Result};
+use crate::WriteBinProtExt;
 use serde::ser::{self, Error as SerError};
 use serde::Serialize;
-use crate::WriteBinProtExt;
 
 pub struct Serializer<W> {
     writer: W,

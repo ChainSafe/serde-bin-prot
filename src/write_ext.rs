@@ -4,7 +4,6 @@ use num::{FromPrimitive, Unsigned};
 
 /// Extension traits for io::Read and io::Write to read and
 /// write bin_prot encoded types
-
 use std::io;
 
 // extension trait for writers implementing io::Write to allow them to write any integer
