@@ -1,7 +1,7 @@
+use difference::Changeset;
 use serde_bin_prot::{from_reader, to_writer};
 use std::f64;
 use std::fmt::Write;
-use difference::Changeset;
 
 mod common;
 use common::print_byte_array;

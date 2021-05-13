@@ -1,6 +1,6 @@
+use difference::Changeset;
 use serde_bin_prot::{from_reader, to_writer};
 use std::fmt::Write;
-use difference::Changeset;
 
 mod common;
 use common::print_byte_array;
@@ -24,7 +24,6 @@ fn test_cases() -> Vec<Vec<i32>> {
         vec![1, -1],
         vec![0, i32::MAX],
         vec![i32::MAX, i32::MIN],
-
     ]
 }
 
