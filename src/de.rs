@@ -51,20 +51,16 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
         unimplemented!()
     }
 
-    // bools are a single byte 0x00 or 0x01
     fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        match self.read_byte()? {
-            0x00 => visitor.visit_bool(false),
-            0x01 => visitor.visit_bool(true),
-            _ => Err(Error::custom("Invalid bool byte")),
-        }
+        visitor.visit_bool(self.rdr.bin_read_bool()?)
     }
 
-    // all native integer types targets are interpreted as Integer
-    // and will attempt to fit in to native byte size and error if too large
+    // all native integer types targets are interpreted as variable length integer
+    // THey will attempt to fit into the target byte size and error if too large
+    // Implementations should use attribute tags to deserialize fixed length types
     fn deserialize_i8<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
@@ -188,10 +184,8 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: Visitor<'de>,
     {
-        match self.read_byte()? {
-            0x00 => visitor.visit_unit(),
-            _ => Err(Error::custom("Invalid unit byte")),
-        }
+        self.rdr.bin_read_unit()?;
+        visitor.visit_unit()
     }
 
     // Unit struct means a named value containing no data.

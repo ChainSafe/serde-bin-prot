@@ -80,7 +80,8 @@ where
     // false  ->  0x00
     // true   ->  0x01
     fn serialize_bool(self, v: bool) -> Result<()> {
-        self.write_byte(if v { 0x00 } else { 0x01 })
+        self.writer.bin_write_bool(v)?;
+        Ok(())
     }
 
     // All integers by default get mapped to the Integer bin_prot
@@ -155,14 +156,17 @@ where
         self.write(v.as_bytes())
     }
 
-    // just treat this like any other array for now
+    // This must simply write the bytes to the output as is
+    // The custom implementations for different integer types
+    // depends on this
     fn serialize_bytes(self, v: &[u8]) -> Result<()> {
         self.write(v)
     }
 
     // An absent optional is represented as a unit or zero byte
     fn serialize_none(self) -> Result<()> {
-        self.serialize_unit()
+        self.writer.bin_write_unit()?;
+        Ok(())
     }
 
     // A present optional is represented as a 0x01 byte
@@ -178,7 +182,7 @@ where
     // In Serde, unit means an anonymous value containing no data.
     // This is a zero byte
     fn serialize_unit(self) -> Result<()> {
-        self.write_byte(0x00)?;
+        self.writer.bin_write_unit()?;
         Ok(())
     }
 
@@ -187,7 +191,8 @@ where
         self.serialize_unit()
     }
 
-    // TODO: What even is this?
+    // Newtype struct are like tuple structs with a single value
+    // Just serialize the contained value
     fn serialize_newtype_struct<T>(self, _name: &'static str, value: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
@@ -285,18 +290,19 @@ where
         Ok(self)
     }
 
-    // TODO: What even is this?
+    // These are enum variants like Some(value)
     fn serialize_newtype_variant<T>(
         self,
         _name: &'static str,
-        _variant_index: u32,
+        variant_index: u32,
         _variant: &'static str,
-        _value: &T,
+        value: &T,
     ) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
-        todo!()
+        self.write_variant_index(variant_index)?;
+        value.serialize(self)
     }
 }
 

@@ -6,6 +6,28 @@ use std::io;
 // Extension trait for readers implementing io::Read to allow them to read a bin_prot encoded
 // integer
 pub trait ReadBinProtExt: io::Read {
+    fn bin_read_unit(&mut self) -> Result<(), io::Error> {
+        if self.read_u8()? == 0x00 {
+            Ok(())
+        } else {
+            Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Tried to read a unit but byte invalid",
+            ))
+        }
+    }
+
+    fn bin_read_bool(&mut self) -> Result<bool, io::Error> {
+        match self.read_u8()? {
+            0x00 => Ok(false),
+            0x01 => Ok(true),
+            _ => Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Invalid boolean value",
+            )),
+        }
+    }
+
     fn bin_read_integer<T: FromPrimitive>(&mut self) -> Result<T, io::Error> {
         let mut buf = [0];
         self.read_exact(&mut buf)?;

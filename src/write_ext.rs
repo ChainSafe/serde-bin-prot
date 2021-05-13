@@ -10,6 +10,14 @@ use std::io;
 // in bin_prot form.
 // This accepts any integer which can be converted to an i64 (which is all integers in Rust)
 pub trait WriteBinProtExt: io::Write {
+    fn bin_write_unit(&mut self) -> Result<usize, io::Error> {
+        self.write_u8(0x00).map(|_| 1)
+    }
+
+    fn bin_write_bool(&mut self, b: bool) -> Result<usize, io::Error> {
+        self.write_u8(if b { 0x01 } else { 0x00 }).map(|_| 1)
+    }
+
     fn bin_write_integer<T: Into<i64>>(&mut self, n: T) -> Result<usize, io::Error> {
         let n: i64 = n.into();
         if n >= 0 {
