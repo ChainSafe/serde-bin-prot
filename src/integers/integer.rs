@@ -1,3 +1,5 @@
+use num::FromPrimitive;
+use core::marker::PhantomData;
 use std::io::Cursor;
 
 use crate::{ReadBinProtExt, WriteBinProtExt};
@@ -14,10 +16,18 @@ where
     s.serialize_bytes(&bytes)
 }
 
-struct IntegerVisitor;
+struct IntegerVisitor<T>(PhantomData<T>);
 
-impl<'de> Visitor<'de> for IntegerVisitor {
-    type Value = i64;
+impl<T> IntegerVisitor<T> {
+    pub fn new() -> Self {
+        IntegerVisitor::<T>(PhantomData)
+    }
+}
+
+impl<'de, T> Visitor<'de> for IntegerVisitor<T>
+where T: FromPrimitive
+{
+    type Value = T;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         formatter.write_str("A bin_prot encoded integer (1, 3, 5, or 9 bytes depending on size)")
@@ -32,9 +42,9 @@ impl<'de> Visitor<'de> for IntegerVisitor {
     }
 }
 
-pub fn deserialize<'de, D>(d: D) -> Result<i64, D::Error>
+pub fn deserialize<'de, D, T>(d: D) -> Result<T, D::Error>
 where
-    D: Deserializer<'de>,
+    D: Deserializer<'de>, T: FromPrimitive
 {
-    d.deserialize_bytes(IntegerVisitor)
+    d.deserialize_bytes(IntegerVisitor::new())
 }

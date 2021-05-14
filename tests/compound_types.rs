@@ -16,9 +16,9 @@ struct B {
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 struct TestFieldAttrs {
     #[serde(with = "nat0")]
-    n: u64,
+    n: u8,
     #[serde(with = "integer")]
-    i: u64,
+    i: i16,
 }
 
 #[test]
