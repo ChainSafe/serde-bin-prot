@@ -47,9 +47,6 @@ fn test_serialize_floats() {
 #[test]
 fn test_roundtrip_floats() {
     for val in TEST_CASES {
-        let mut output = Vec::<u8>::new();
-        to_writer(&mut output, &val).unwrap();
-        let re_val: f64 = from_reader(output.as_slice()).unwrap();
-        assert_eq!(val, &re_val)
+        common::roundtrip_test(*val);
     }
 }

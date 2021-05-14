@@ -1,3 +1,6 @@
+use serde::{Deserialize, Serialize};
+use serde_bin_prot::{from_reader, to_writer};
+use std::fmt::Debug;
 use std::fmt::Write;
 
 /// Prints a byte array according to the style used in the Jane Street
@@ -12,4 +15,11 @@ pub fn print_byte_array<W: Write>(w: &mut W, bytes: &[u8], max_len: usize) {
     for b in bytes.iter().rev() {
         write!(w, "{:02x} ", b).unwrap();
     }
+}
+
+pub fn roundtrip_test<'a, T: Serialize + Deserialize<'a> + PartialEq + Debug>(val: T) {
+    let mut output = Vec::<u8>::new();
+    to_writer(&mut output, &val).unwrap();
+    let re_val: T = from_reader(output.as_slice()).unwrap();
+    assert_eq!(val, re_val)
 }

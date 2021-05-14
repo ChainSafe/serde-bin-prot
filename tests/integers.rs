@@ -5,8 +5,8 @@
 /// Note the bytes are little-endian encoded.
 ///
 /// These tests can be parsed and executed directly from their source
-use serde_bin_prot::{from_reader, to_writer};
 use std::collections::HashSet;
+mod common;
 
 type Points = HashSet<i64>;
 
@@ -73,9 +73,6 @@ fn test_roundtrip_integers() {
     };
 
     for val in find_interesting_points(int_test) {
-        let mut output = Vec::<u8>::new();
-        to_writer(&mut output, &val).unwrap();
-        let re_val: i64 = from_reader(output.as_slice()).unwrap();
-        assert_eq!(val, re_val)
+        common::roundtrip_test(val);
     }
 }

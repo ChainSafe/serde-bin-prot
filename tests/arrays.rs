@@ -46,9 +46,6 @@ fn test_serialize_arrays() {
 #[test]
 fn test_roundtrip_arrays() {
     for val in test_cases() {
-        let mut output = Vec::<u8>::new();
-        to_writer(&mut output, &val).unwrap();
-        let re_val: Vec<i32> = from_reader(output.as_slice()).unwrap();
-        assert_eq!(val, re_val)
+        common::roundtrip_test(val);
     }
 }

@@ -1,7 +1,7 @@
 mod consts;
 mod de;
 mod error;
-mod integers;
+pub mod integers;
 mod read_ext;
 mod ser;
 mod write_ext;
