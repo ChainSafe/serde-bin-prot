@@ -3,7 +3,7 @@ use serde_bin_prot::integers::{integer, nat0};
 mod common;
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
-struct TestTypleStruct(bool, i8, i16, i32, i64, (), Option<()>, [u8; 3]);
+struct TestTupleStruct(bool, i8, i16, i32, i64, (), Option<()>, [u8; 3]);
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 struct A(bool);
@@ -23,7 +23,7 @@ struct TestFieldAttrs {
 
 #[test]
 fn roundtrip_tuple_struct() {
-    common::roundtrip_test(TestTypleStruct(
+    common::roundtrip_test(TestTupleStruct(
         true,
         0,
         0,
