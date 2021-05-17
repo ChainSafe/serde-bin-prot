@@ -1,5 +1,5 @@
-use num::FromPrimitive;
 use core::marker::PhantomData;
+use num::FromPrimitive;
 use std::io::Cursor;
 
 use crate::{ReadBinProtExt, WriteBinProtExt};
@@ -25,7 +25,8 @@ impl<T> IntegerVisitor<T> {
 }
 
 impl<'de, T> Visitor<'de> for IntegerVisitor<T>
-where T: FromPrimitive
+where
+    T: FromPrimitive,
 {
     type Value = T;
 
@@ -44,7 +45,8 @@ where T: FromPrimitive
 
 pub fn deserialize<'de, D, T>(d: D) -> Result<T, D::Error>
 where
-    D: Deserializer<'de>, T: FromPrimitive
+    D: Deserializer<'de>,
+    T: FromPrimitive,
 {
     d.deserialize_bytes(IntegerVisitor::new())
 }

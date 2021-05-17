@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use crate::{ReadBinProtExt, WriteBinProtExt};
 
-use num::{Unsigned, FromPrimitive};
+use num::{FromPrimitive, Unsigned};
 use serde::de::{self, Deserializer, Visitor};
 use serde::ser::Serializer;
 use std::io::Cursor;
@@ -26,8 +26,8 @@ impl<T> Nat0Visitor<T> {
 }
 
 impl<'de, T> Visitor<'de> for Nat0Visitor<T>
-where 
-    T: Unsigned + FromPrimitive
+where
+    T: Unsigned + FromPrimitive,
 {
     type Value = T;
 
@@ -47,7 +47,7 @@ where
 pub fn deserialize<'de, D, T>(d: D) -> Result<T, D::Error>
 where
     D: Deserializer<'de>,
-    T: Unsigned + FromPrimitive
+    T: Unsigned + FromPrimitive,
 {
     d.deserialize_bytes(Nat0Visitor::new())
 }
