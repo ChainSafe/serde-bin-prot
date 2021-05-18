@@ -12,7 +12,7 @@ where
     S: Serializer,
     T: Unsigned + Into<u64> + Copy,
 {
-    let mut bytes = Vec::<u8>::new();
+    let mut bytes = Vec::new();
     bytes.bin_write_nat0(*n).unwrap();
     s.serialize_bytes(&bytes)
 }

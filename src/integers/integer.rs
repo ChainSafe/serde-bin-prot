@@ -39,7 +39,7 @@ where
         E: de::Error,
     {
         let mut rdr = Cursor::new(value);
-        rdr.bin_read_integer().map_err(|_| de::Error::custom(""))
+        rdr.bin_read_integer().map_err(|_| de::Error::custom("Failed to read valid integer"))
     }
 }
 
