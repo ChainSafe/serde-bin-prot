@@ -1,5 +1,5 @@
 use crate::error::{Error, ErrorCode, Result};
-use crate::integers::ReadBinProtIntegerExt;
+use crate::ReadBinProtExt;
 use byteorder::{LittleEndian, ReadBytesExt};
 use serde::de::{self, EnumAccess, Error as DeError, Visitor};
 use serde::Deserialize;
@@ -30,7 +30,7 @@ impl<R: Read> Deserializer<R> {
                 self.pos += 1;
                 Ok(buf[0])
             }
-            Ok(_) => self.error(ErrorCode::EOFWhileParsing),
+            Ok(_) => self.error(ErrorCode::EofWhileParsing),
             Err(err) => Err(Error::Io(err)),
         }
     }
@@ -51,72 +51,70 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
         unimplemented!()
     }
 
-    // bools are a single byte 0x00 or 0x01
     fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        match self.read_byte()? {
-            0x00 => visitor.visit_bool(false),
-            0x01 => visitor.visit_bool(true),
-            _ => Err(Error::custom("Invalid bool byte")),
-        }
+        visitor.visit_bool(self.rdr.bin_read_bool()?)
     }
 
+    // all native integer types targets are interpreted as variable length integer
+    // THey will attempt to fit into the target byte size and error if too large
+    // Implementations should use attribute tags to deserialize fixed length types
     fn deserialize_i8<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        visitor.visit_i8(self.rdr.read_binprot_integer()?)
+        visitor.visit_i8(self.rdr.bin_read_integer()?)
     }
 
     fn deserialize_i16<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        visitor.visit_i16(self.rdr.read_binprot_integer()?)
+        visitor.visit_i16(self.rdr.bin_read_integer()?)
     }
 
     fn deserialize_i32<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        visitor.visit_i32(self.rdr.read_binprot_integer()?)
+        visitor.visit_i32(self.rdr.bin_read_integer()?)
     }
 
     fn deserialize_i64<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        visitor.visit_i64(self.rdr.read_binprot_integer()?)
+        visitor.visit_i64(self.rdr.bin_read_integer()?)
     }
 
     fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        visitor.visit_u8(self.rdr.read_binprot_integer()?)
+        visitor.visit_u8(self.rdr.bin_read_integer()?)
     }
 
     fn deserialize_u16<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        visitor.visit_u16(self.rdr.read_binprot_integer()?)
+        visitor.visit_u16(self.rdr.bin_read_integer()?)
     }
 
     fn deserialize_u32<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        visitor.visit_u32(self.rdr.read_binprot_integer()?)
+        visitor.visit_u32(self.rdr.bin_read_integer()?)
     }
 
     fn deserialize_u64<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        visitor.visit_u64(self.rdr.read_binprot_integer()?)
+        visitor.visit_u64(self.rdr.bin_read_integer()?)
     }
 
     fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value>
@@ -133,11 +131,11 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
         visitor.visit_f64(self.rdr.read_f64::<LittleEndian>()?)
     }
 
-    fn deserialize_char<V>(self, _visitor: V) -> Result<V::Value>
+    fn deserialize_char<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        todo!()
+        visitor.visit_char(self.rdr.bin_read_char()?)
     }
 
     fn deserialize_str<V>(self, _visitor: V) -> Result<V::Value>
@@ -186,10 +184,8 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: Visitor<'de>,
     {
-        match self.read_byte()? {
-            0x00 => visitor.visit_unit(),
-            _ => Err(Error::custom("Invalid unit byte")),
-        }
+        self.rdr.bin_read_unit()?;
+        visitor.visit_unit()
     }
 
     // Unit struct means a named value containing no data.
@@ -216,7 +212,7 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: Visitor<'de>,
     {
-        let len = self.rdr.read_binprot_nat0()?;
+        let len = self.rdr.bin_read_nat0()?;
         visitor.visit_seq(SeqAccess::new(self, len))
     }
 
@@ -249,7 +245,7 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: Visitor<'de>,
     {
-        let len = self.rdr.read_binprot_nat0()?;
+        let len = self.rdr.bin_read_nat0()?;
         visitor.visit_map(SeqAccess::new(self, len))
     }
 

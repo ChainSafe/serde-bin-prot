@@ -11,13 +11,13 @@ pub enum ErrorCode {
     /// Unsupported opcode
     Unsupported(char),
     /// EOF while parsing op argument
-    EOFWhileParsing,
+    EofWhileParsing,
     /// Stack underflowed
     StackUnderflow,
     /// Length prefix found negative
     NegativeLength,
     /// String decoding as UTF-8 failed
-    StringNotUTF8,
+    StringNotUtf8,
     /// Wrong stack top type for opcode
     InvalidStackTop(&'static str, String),
     /// Value not hashable, but used as dict key or set item
@@ -46,10 +46,10 @@ impl fmt::Display for ErrorCode {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ErrorCode::Unsupported(ch) => write!(fmt, "unsupported opcode {:?}", ch),
-            ErrorCode::EOFWhileParsing => write!(fmt, "EOF while parsing"),
+            ErrorCode::EofWhileParsing => write!(fmt, "EOF while parsing"),
             ErrorCode::StackUnderflow => write!(fmt, "stack underflow"),
             ErrorCode::NegativeLength => write!(fmt, "negative length prefix"),
-            ErrorCode::StringNotUTF8 => write!(fmt, "string is not UTF-8 encoded"),
+            ErrorCode::StringNotUtf8 => write!(fmt, "string is not UTF-8 encoded"),
             ErrorCode::InvalidStackTop(what, ref it) => {
                 write!(fmt, "invalid stack top, expected {}, got {}", what, it)
             }

@@ -1,5 +1,5 @@
 use crate::error::{Error, Result};
-use crate::integers::WriteBinProtIntegerExt;
+use crate::WriteBinProtExt;
 use serde::ser::{self, Error as SerError};
 use serde::Serialize;
 
@@ -80,42 +80,43 @@ where
     // false  ->  0x00
     // true   ->  0x01
     fn serialize_bool(self, v: bool) -> Result<()> {
-        self.write_byte(if v { 0x00 } else { 0x01 })
+        self.writer.bin_write_bool(v)?;
+        Ok(())
     }
 
-    // See the integers.rs for implementation of write_binprot_integer()
+    // All integers by default get mapped to the Integer bin_prot
     fn serialize_i8(self, v: i8) -> Result<()> {
-        self.writer.write_binprot_integer(v)?;
+        self.writer.bin_write_integer(v)?;
         Ok(())
     }
 
     fn serialize_i16(self, v: i16) -> Result<()> {
-        self.writer.write_binprot_integer(v)?;
+        self.writer.bin_write_integer(v)?;
         Ok(())
     }
 
     fn serialize_i32(self, v: i32) -> Result<()> {
-        self.writer.write_binprot_integer(v)?;
+        self.writer.bin_write_integer(v)?;
         Ok(())
     }
 
     fn serialize_i64(self, v: i64) -> Result<()> {
-        self.writer.write_binprot_integer(v)?;
+        self.writer.bin_write_integer(v)?;
         Ok(())
     }
 
     fn serialize_u8(self, v: u8) -> Result<()> {
-        self.writer.write_binprot_integer(v)?;
+        self.writer.bin_write_integer(v)?;
         Ok(())
     }
 
     fn serialize_u16(self, v: u16) -> Result<()> {
-        self.writer.write_binprot_integer(v)?;
+        self.writer.bin_write_integer(v)?;
         Ok(())
     }
 
     fn serialize_u32(self, v: u32) -> Result<()> {
-        self.writer.write_binprot_integer(v)?;
+        self.writer.bin_write_integer(v)?;
         Ok(())
     }
 
@@ -125,44 +126,44 @@ where
         // doesn't require reserving the sign bit.
         // This is ok to do as it is never compared with a value larger than 0x80000000
         // and it is cast back to a u64 before it is serialized. Just something to be aware of.
-        self.writer.write_binprot_integer(v as i64)?;
+        self.writer.bin_write_integer(v as i64)?;
         Ok(())
     }
 
-    // Floats are written out according to the 64 bit IEEE 754 floating point standard
-    // i.e. their memory representation (in OCaml) is copied verbatim.
     fn serialize_f32(self, v: f32) -> Result<()> {
-        self.serialize_f64(f64::from(v))
+        self.writer.bin_write_float32(&v)?;
+        Ok(())
     }
 
     fn serialize_f64(self, v: f64) -> Result<()> {
-        self.write(&v.to_le_bytes())
+        self.writer.bin_write_float64(&v)?;
+        Ok(())
     }
 
     // Chars are UTF-8 encoded and may be between 1 and 4 bytes
     fn serialize_char(self, v: char) -> Result<()> {
-        let buffer = [0_u8; 4]; // can fit any char
-        for i in 0..v.len_utf8() {
-            self.write_byte(buffer[i])?;
-        }
+        self.writer.bin_write_char(v)?;
         Ok(())
     }
 
     // First the length of the string is written as a Nat0 (in characters?)
     // Then the bytes of the string verbatim
     fn serialize_str(self, v: &str) -> Result<()> {
-        self.writer.write_binprot_nat0(v.len() as u64)?;
+        self.writer.bin_write_nat0(v.len() as u64)?;
         self.write(v.as_bytes())
     }
 
-    // just treat this like any other array for now
+    // This must simply write the bytes to the output as is
+    // The custom implementations for different integer types
+    // depends on this
     fn serialize_bytes(self, v: &[u8]) -> Result<()> {
         self.write(v)
     }
 
     // An absent optional is represented as a unit or zero byte
     fn serialize_none(self) -> Result<()> {
-        self.serialize_unit()
+        self.writer.bin_write_unit()?;
+        Ok(())
     }
 
     // A present optional is represented as a 0x01 byte
@@ -178,7 +179,7 @@ where
     // In Serde, unit means an anonymous value containing no data.
     // This is a zero byte
     fn serialize_unit(self) -> Result<()> {
-        self.write_byte(0x00)?;
+        self.writer.bin_write_unit()?;
         Ok(())
     }
 
@@ -187,7 +188,8 @@ where
         self.serialize_unit()
     }
 
-    // TODO: What even is this?
+    // Newtype struct are like tuple structs with a single value
+    // Just serialize the contained value
     fn serialize_newtype_struct<T>(self, _name: &'static str, value: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
@@ -203,7 +205,7 @@ where
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
         if let Some(len) = len {
             // write the output length first
-            self.writer.write_binprot_nat0(len as u64)?;
+            self.writer.bin_write_nat0(len as u64)?;
             Ok(self) // pass self as the handler for writing the elements
         } else {
             Err(Error::custom("Size not provided"))
@@ -232,7 +234,7 @@ where
     // and writes out the key followed by the value.
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap> {
         if let Some(len) = len {
-            self.writer.write_binprot_nat0(len as u64)?;
+            self.writer.bin_write_nat0(len as u64)?;
             Ok(self)
         } else {
             // size not provided. We cannot proceed
@@ -285,18 +287,19 @@ where
         Ok(self)
     }
 
-    // TODO: What even is this?
+    // These are enum variants like Some(value)
     fn serialize_newtype_variant<T>(
         self,
         _name: &'static str,
-        _variant_index: u32,
+        variant_index: u32,
         _variant: &'static str,
-        _value: &T,
+        value: &T,
     ) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
-        todo!()
+        self.write_variant_index(variant_index)?;
+        value.serialize(self)
     }
 }
 

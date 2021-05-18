@@ -5,86 +5,74 @@
 /// Note the bytes are little-endian encoded.
 ///
 /// These tests can be parsed and executed directly from their source
-mod integers_test_cases;
+use std::collections::HashSet;
+mod common;
 
-use core::convert::TryFrom;
-use integers_test_cases::{get_test_cases, OcamlIntegerType};
-use serde_bin_prot::{from_reader, to_writer, Nat0};
+type Points = HashSet<i64>;
 
-#[derive(Debug)]
-enum OCamlInteger {
-    Int(i64),
-    Nat0(Nat0),
+const TEST_WINDOW_LEN: i64 = 16;
+
+const INT_MIN: i64 = -2_i64.pow(62);
+const INT_MAX: i64 = 2_i64.pow(62) - 1;
+
+struct TestCase {
+    min: i64,
+    max: i64,
 }
 
-impl TryFrom<(OcamlIntegerType, i64)> for OCamlInteger {
-    type Error = String;
-    fn try_from(i: (OcamlIntegerType, i64)) -> Result<Self, Self::Error> {
-        match i.0 {
-            OcamlIntegerType::int
-            | OcamlIntegerType::int32
-            | OcamlIntegerType::int64
-            | OcamlIntegerType::int_16bit
-            | OcamlIntegerType::int_32bit
-            | OcamlIntegerType::int_64bit
-            | OcamlIntegerType::int64_bits
-            | OcamlIntegerType::network16_int
-            | OcamlIntegerType::network32_int
-            | OcamlIntegerType::network64_int
-            | OcamlIntegerType::network32_int32
-            | OcamlIntegerType::network64_int64 => Ok(Self::Int(i.1)),
-            OcamlIntegerType::nat0 => {
-                let v = u64::try_from(i.1).map_err(|_| "Tryed to parse signed int to nat0")?;
-                Ok(Self::Nat0(Nat0::new(v)))
-            }
-            OcamlIntegerType::variant_int => Err("variant_int not supported (yet)".to_string()),
-        }
+fn find_interesting_points(case: TestCase) -> Points {
+    let mut points = HashSet::new();
+    points.insert(0);
+    points.insert(case.min);
+    points.insert(case.max);
+    points = points.union(&valid_powers_of_two(&case)).cloned().collect();
+    add_windows_around_points(case, points)
+}
+
+// { 2 ^ n | 0 <= n <= 63 } \/ { -(2 ^ n) | 0 <= n <= 63 }
+fn powers_of_two() -> Points {
+    let mut acc = Points::new();
+    for i in 0..62 {
+        acc.insert(2_i64.pow(i));
+        acc.insert(-2_i64.pow(i));
     }
+    acc
 }
 
-#[test]
-fn test_serialize_integers() {
-    for case_tuple in get_test_cases() {
-        println!("{:?}", case_tuple);
-        let (ocaml_type, bytes, integer) = case_tuple;
+fn valid_powers_of_two(case: &TestCase) -> Points {
+    powers_of_two()
+        .into_iter()
+        .filter(|i| i >= &case.min && i <= &case.max)
+        .collect()
+}
 
-        let ocaml_integer =
-            OCamlInteger::try_from((ocaml_type, integer)).expect("Invalid test case");
-
-        // test serialization
-        let mut output = Vec::<u8>::new();
-        match ocaml_integer {
-            OCamlInteger::Int(ref v) => {
-                to_writer(&mut output, &v).unwrap();
-            }
-            OCamlInteger::Nat0(ref v) => {
-                to_writer(&mut output, &v).unwrap();
-            }
+fn add_windows_around_points(TestCase { min, max }: TestCase, points: Points) -> Points {
+    // add all point between a and b inclusive into an accumulator
+    fn add_between(a: i64, b: i64, mut acc: Points) -> Points {
+        println!("adding between {} and {}", a, b);
+        for i in a..b {
+            acc.insert(i.clone());
         }
-        output.reverse(); // Not 100% sure why this is required. Seek confirmation.
-        assert_eq!(output, bytes);
+        acc
     }
+
+    points.into_iter().fold(Points::new(), |acc, i| {
+        let d = TEST_WINDOW_LEN / 2;
+        let a = if i <= (min + d) { min } else { i - d };
+        let b = if i >= (max - d) { max } else { i + d };
+        add_between(a, b, acc)
+    })
 }
 
+/// Test the variable size integer encoding
 #[test]
-fn test_deserialize_integers() {
-    for case_tuple in get_test_cases() {
-        println!("{:?}", case_tuple);
-        let (ocaml_type, mut bytes, integer) = case_tuple;
+fn test_roundtrip_integers() {
+    let int_test = TestCase {
+        min: INT_MIN,
+        max: INT_MAX,
+    };
 
-        let ocaml_integer =
-            OCamlInteger::try_from((ocaml_type, integer)).expect("Invalid test case");
-
-        // test deserialization
-        match ocaml_integer {
-            OCamlInteger::Int(_) => {
-                bytes.reverse();
-                let value: i64 = from_reader(bytes.as_slice()).expect("Deserialization failed");
-                assert_eq!(value, integer)
-            }
-            OCamlInteger::Nat0(_) => {
-                // TODO
-            }
-        }
+    for val in find_interesting_points(int_test) {
+        common::roundtrip_test(val);
     }
 }
