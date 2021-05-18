@@ -79,10 +79,12 @@ pub trait ReadBinProtExt: io::Read {
                 T::from_u8(byte0)
             }
         }
-        .ok_or_else(|| io::Error::new(
-            io::ErrorKind::InvalidData,
-            "Destination integer type too small for value or incorrect sign",
-        ))
+        .ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Destination integer type too small for value or incorrect sign",
+            )
+        })
     }
 
     fn bin_read_nat0<T: FromPrimitive + Unsigned>(&mut self) -> Result<T, io::Error> {
@@ -108,10 +110,12 @@ pub trait ReadBinProtExt: io::Read {
                 T::from_u8(byte0)
             }
         }
-        .ok_or_else(|| io::Error::new(
-            io::ErrorKind::InvalidData,
-            "Destination integer type too small for value or incorrect sign",
-        ))
+        .ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Destination integer type too small for value or incorrect sign",
+            )
+        })
     }
 }
 
