@@ -8,12 +8,12 @@ use std::io;
 // extension trait for writers implementing io::Write to allow them to write
 // the primitive values for bin_prot
 pub trait WriteBinProtExt: io::Write {
-    fn bin_write_unit(&mut self) -> Result<usize, io::Error> {
-        self.write_u8(0x00).map(|_| 1)
+    fn bin_write_unit(&mut self) -> Result<(), io::Error> {
+        self.write_u8(0x00)
     }
 
-    fn bin_write_bool(&mut self, b: bool) -> Result<usize, io::Error> {
-        self.write_u8(if b { 0x01 } else { 0x00 }).map(|_| 1)
+    fn bin_write_bool(&mut self, b: bool) -> Result<(), io::Error> {
+        self.write_u8(if b { 0x01 } else { 0x00 })
     }
 
     // chars are utf-8 so can be 1-4 bytes long
