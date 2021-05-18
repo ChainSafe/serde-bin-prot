@@ -131,11 +131,11 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
         visitor.visit_f64(self.rdr.read_f64::<LittleEndian>()?)
     }
 
-    fn deserialize_char<V>(self, _visitor: V) -> Result<V::Value>
+    fn deserialize_char<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        todo!()
+        visitor.visit_char(self.rdr.bin_read_char()?)
     }
 
     fn deserialize_str<V>(self, _visitor: V) -> Result<V::Value>

@@ -3,7 +3,7 @@ use serde_bin_prot::integers::{integer, nat0};
 mod common;
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
-struct TestTupleStruct(bool, i8, i16, i32, i64, (), Option<()>, [u8; 3]);
+struct TestTupleStruct(bool, i8, i16, i32, i64, (), Option<()>, [u8; 3], char);
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 struct A(bool);
@@ -32,6 +32,7 @@ fn roundtrip_tuple_struct() {
         (),
         None,
         [0x01, 0x02, 0x03],
+        'c'
     ));
 }
 
