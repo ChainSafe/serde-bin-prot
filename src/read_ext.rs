@@ -7,12 +7,11 @@ use std::io;
 // integer
 pub trait ReadBinProtExt: io::Read {
     fn bin_read_unit(&mut self) -> Result<(), io::Error> {
-        if self.read_u8()? == 0x00 {
-            Ok(())
-        } else {
-            Err(io::Error::new(
+        match self.read_u8()? {
+            0x00 => Ok(()),
+            b => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Tried to read a unit but byte invalid",
+                format!("Invalid unit byte. Expected 0x00, found {:}", b),
             ))
         }
     }
@@ -21,9 +20,9 @@ pub trait ReadBinProtExt: io::Read {
         match self.read_u8()? {
             0x00 => Ok(false),
             0x01 => Ok(true),
-            _ => Err(io::Error::new(
+            b => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Invalid boolean value",
+                format!("Invalid boolean byte. Expected either 0x00 or 0x01, found {:}", b),
             )),
         }
     }
