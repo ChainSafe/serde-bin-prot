@@ -18,8 +18,9 @@ pub trait WriteBinProtExt: io::Write {
 
     // chars are utf-8 so can be 1-4 bytes long
     fn bin_write_char(&mut self, c: char) -> Result<usize, io::Error> {
-        let buffer = [0_u8; 4]; // can fit any char
+        let mut buffer = [0_u8; 4]; // can fit any char
         let len = c.len_utf8();
+        c.encode_utf8(&mut buffer);
         for i in 0..len {
             self.write_u8(buffer[i])?;
         }
