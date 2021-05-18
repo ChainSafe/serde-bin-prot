@@ -30,7 +30,7 @@ impl<R: Read> Deserializer<R> {
                 self.pos += 1;
                 Ok(buf[0])
             }
-            Ok(_) => self.error(ErrorCode::EOFWhileParsing),
+            Ok(_) => self.error(ErrorCode::EofWhileParsing),
             Err(err) => Err(Error::Io(err)),
         }
     }

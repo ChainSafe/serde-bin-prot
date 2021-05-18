@@ -41,7 +41,7 @@ pub trait ReadBinProtExt: io::Read {
             if let Ok(s) = core::str::from_utf8(&buf[..=i]) {
                 // can unwrap here as if from_utf8 returned Ok
                 // then there is at least one char in the string
-                return Ok(s.chars().nth(0).unwrap());
+                return Ok(s.chars().next().unwrap());
             }
         }
         Err(io::Error::new(
@@ -79,7 +79,7 @@ pub trait ReadBinProtExt: io::Read {
                 T::from_u8(byte0)
             }
         }
-        .ok_or(io::Error::new(
+        .ok_or_else(|| io::Error::new(
             io::ErrorKind::InvalidData,
             "Destination integer type too small for value or incorrect sign",
         ))
@@ -108,7 +108,7 @@ pub trait ReadBinProtExt: io::Read {
                 T::from_u8(byte0)
             }
         }
-        .ok_or(io::Error::new(
+        .ok_or_else(|| io::Error::new(
             io::ErrorKind::InvalidData,
             "Destination integer type too small for value or incorrect sign",
         ))

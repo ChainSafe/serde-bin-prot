@@ -21,8 +21,8 @@ pub trait WriteBinProtExt: io::Write {
         let mut buffer = [0_u8; 4]; // can fit any char
         let len = c.len_utf8();
         c.encode_utf8(&mut buffer);
-        for i in 0..len {
-            self.write_u8(buffer[i])?;
+        for c in buffer.iter().take(len) {
+            self.write_u8(*c)?;
         }
         Ok(len)
     }
