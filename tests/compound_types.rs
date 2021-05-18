@@ -32,7 +32,7 @@ fn roundtrip_tuple_struct() {
         (),
         None,
         [0x01, 0x02, 0x03],
-        'c'
+        'c',
     ));
 }
 

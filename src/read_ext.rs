@@ -12,7 +12,7 @@ pub trait ReadBinProtExt: io::Read {
             b => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 format!("Invalid unit byte. Expected 0x00, found {:}", b),
-            ))
+            )),
         }
     }
 
@@ -22,7 +22,10 @@ pub trait ReadBinProtExt: io::Read {
             0x01 => Ok(true),
             b => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                format!("Invalid boolean byte. Expected either 0x00 or 0x01, found {:}", b),
+                format!(
+                    "Invalid boolean byte. Expected either 0x00 or 0x01, found {:}",
+                    b
+                ),
             )),
         }
     }
@@ -38,7 +41,7 @@ pub trait ReadBinProtExt: io::Read {
             if let Ok(s) = core::str::from_utf8(&buf[..=i]) {
                 // can unwrap here as if from_utf8 returned Ok
                 // then there is at least one char in the string
-                return Ok(s.chars().nth(0).unwrap())
+                return Ok(s.chars().nth(0).unwrap());
             }
         }
         Err(io::Error::new(
