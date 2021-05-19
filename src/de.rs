@@ -130,7 +130,7 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: Visitor<'de>,
     {
-        self.deserialize_str(visitor)
+        visitor.visit_string(self.rdr.bin_read_string()?)
     }
 
     fn deserialize_bytes<V>(self, _visitor: V) -> Result<V::Value>

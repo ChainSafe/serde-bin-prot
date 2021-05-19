@@ -110,6 +110,14 @@ pub trait ReadBinProtExt: io::Read {
         }
         .ok_or(Error::DestinationIntegerOverflow)
     }
+
+    fn bin_read_string(&mut self) -> Result<String> {
+        let len = self.bin_read_nat0::<u64>()? as usize;
+        let mut buf = vec![0u8; len as usize];
+        self.read_exact(&mut buf)?;
+        let s = std::str::from_utf8(&buf).map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+        Ok(s.to_string())
+    }
 }
 
 /// All types that implement `Read` get methods defined in `ReadBinProtIntegerExt`
