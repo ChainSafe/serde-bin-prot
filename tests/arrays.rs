@@ -1,5 +1,5 @@
 use difference::Changeset;
-use serde_bin_prot::{from_reader, to_writer};
+use serde_bin_prot::{to_writer};
 use std::fmt::Write;
 
 mod common;

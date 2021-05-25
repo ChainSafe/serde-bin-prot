@@ -1,37 +1,18 @@
-use crate::error::{Error, ErrorCode, Result};
+use crate::error::{Error, Result};
 use crate::ReadBinProtExt;
 use byteorder::{LittleEndian, ReadBytesExt};
-use serde::de::{self, EnumAccess, Error as DeError, Visitor};
+use serde::de::{self, EnumAccess, Visitor};
 use serde::Deserialize;
 use std::io::{BufReader, Read};
 
 pub struct Deserializer<R: Read> {
     rdr: BufReader<R>,
-    pos: usize,
 }
 
 impl<R: Read> Deserializer<R> {
     fn from_reader(rdr: R) -> Self {
         Self {
             rdr: BufReader::new(rdr),
-            pos: 0,
-        }
-    }
-
-    fn error<T>(&self, reason: ErrorCode) -> Result<T> {
-        Err(Error::Eval(reason, self.pos))
-    }
-
-    #[inline]
-    fn read_byte(&mut self) -> Result<u8> {
-        let mut buf = [0];
-        match self.rdr.read(&mut buf) {
-            Ok(1) => {
-                self.pos += 1;
-                Ok(buf[0])
-            }
-            Ok(_) => self.error(ErrorCode::EofWhileParsing),
-            Err(err) => Err(Error::Io(err)),
         }
     }
 }
@@ -172,10 +153,9 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: Visitor<'de>,
     {
-        match self.read_byte()? {
-            0x00 => visitor.visit_none(),
-            0x01 => visitor.visit_some(self),
-            _ => Err(Error::custom("Invalid bool byte")),
+        match self.rdr.bin_read_bool()? {
+            false => visitor.visit_none(),
+            true => visitor.visit_some(self),
         }
     }
 

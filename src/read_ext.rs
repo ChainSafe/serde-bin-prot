@@ -1,4 +1,5 @@
 use crate::consts::*;
+use crate::error::{Error, Result};
 use byteorder::{LittleEndian, ReadBytesExt};
 use num::{FromPrimitive, Unsigned};
 use std::io;
@@ -6,27 +7,26 @@ use std::io;
 // Extension trait for readers implementing io::Read to allow them to read a bin_prot encoded
 // integer
 pub trait ReadBinProtExt: io::Read {
-    fn bin_read_unit(&mut self) -> Result<(), io::Error> {
+    fn bin_read_unit(&mut self) -> Result<()> {
         match self.read_u8()? {
             0x00 => Ok(()),
-            b => Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("Invalid unit byte. Expected 0x00, found {:}", b),
-            )),
+            b => Err(Error::InvalidByte {
+                byte: b,
+                dtype: "unit".to_string(),
+                allowed: vec![0x00],
+            }),
         }
     }
 
-    fn bin_read_bool(&mut self) -> Result<bool, io::Error> {
+    fn bin_read_bool(&mut self) -> Result<bool> {
         match self.read_u8()? {
             0x00 => Ok(false),
             0x01 => Ok(true),
-            b => Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!(
-                    "Invalid boolean byte. Expected either 0x00 or 0x01, found {:}",
-                    b
-                ),
-            )),
+            b => Err(Error::InvalidByte {
+                byte: b,
+                dtype: "bool or option".to_string(),
+                allowed: vec![0x00, 0x01],
+            }),
         }
     }
 
@@ -34,7 +34,7 @@ pub trait ReadBinProtExt: io::Read {
     // With each new byte it attempts to convert the buffer to a utf-8 char and
     // failing this will continue until the max number of bytes for a char
     // is encountered
-    fn bin_read_char(&mut self) -> Result<char, io::Error> {
+    fn bin_read_char(&mut self) -> Result<char> {
         let mut buf = [0; 4];
         for i in 0..4 {
             buf[i] = self.read_u8()?;
@@ -44,13 +44,12 @@ pub trait ReadBinProtExt: io::Read {
                 return Ok(s.chars().next().unwrap());
             }
         }
-        Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "Could not construct valid UTF-8 char from bytes",
-        ))
+        Err(Error::InvalidUtf8 {
+            bytes: buf.to_vec(),
+        })
     }
 
-    fn bin_read_integer<T: FromPrimitive>(&mut self) -> Result<T, io::Error> {
+    fn bin_read_integer<T: FromPrimitive>(&mut self) -> Result<T> {
         let mut buf = [0];
         self.read_exact(&mut buf)?;
         // for the possibly signed cases, read them as signed and allow
@@ -75,19 +74,16 @@ pub trait ReadBinProtExt: io::Read {
             }
             byte0 => {
                 // first byte isnt a code so interpret it as a u8
-                assert!(byte0 < 0x000000080, "Invalid value stored in byte"); // sanity check
+                if byte0 > 0x000000080 {
+                    return Err(Error::InvalidIntegerByte { byte: byte0 });
+                }
                 T::from_u8(byte0)
             }
         }
-        .ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Destination integer type too small for value or incorrect sign",
-            )
-        })
+        .ok_or(Error::DestinationIntegerOverflow)
     }
 
-    fn bin_read_nat0<T: FromPrimitive + Unsigned>(&mut self) -> Result<T, io::Error> {
+    fn bin_read_nat0<T: FromPrimitive + Unsigned>(&mut self) -> Result<T> {
         let mut buf = [0];
         self.read_exact(&mut buf)?;
         // In this case it is always reading an unsigned integer
@@ -106,16 +102,13 @@ pub trait ReadBinProtExt: io::Read {
             }
             byte0 => {
                 // first byte isnt a code so interpret it as a u8
-                assert!(byte0 < 0x000000080, "Invalid value stored in byte"); // sanity check
+                if byte0 > 0x000000080 {
+                    return Err(Error::InvalidIntegerByte { byte: byte0 });
+                }
                 T::from_u8(byte0)
             }
         }
-        .ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Destination integer type too small for value or incorrect sign",
-            )
-        })
+        .ok_or(Error::DestinationIntegerOverflow)
     }
 }
 
