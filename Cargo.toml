@@ -12,6 +12,7 @@ byteorder = "1.4.3"
 num = "0.4.0"
 serde = { version = "1.0.125" }
 shrinkwraprs = "0.3.0"
+thiserror = "1.0.24"
 
 [dev-dependencies]
 difference = "2.0.0"

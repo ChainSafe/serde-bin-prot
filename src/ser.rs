@@ -1,6 +1,6 @@
 use crate::error::{Error, Result};
 use crate::WriteBinProtExt;
-use serde::ser::{self, Error as SerError};
+use serde::ser;
 use serde::Serialize;
 
 pub struct Serializer<W> {
@@ -208,7 +208,7 @@ where
             self.writer.bin_write_nat0(len as u64)?;
             Ok(self) // pass self as the handler for writing the elements
         } else {
-            Err(Error::custom("Size not provided"))
+            Err(Error::SeqSizeNotProvided)
         }
     }
 
