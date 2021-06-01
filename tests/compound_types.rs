@@ -40,3 +40,8 @@ fn roundtrip_tuple_struct() {
 fn roundtrip_nested_structs() {
     common::roundtrip_test(B { a: A(false) });
 }
+
+#[test]
+fn roundtrip_owned_string() {
+    common::roundtrip_test("serde-bin-prot".to_string());
+}
