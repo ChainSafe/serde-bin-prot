@@ -1,6 +1,6 @@
 mod consts;
 mod de;
-mod error;
+pub mod error;
 pub mod integers;
 mod read_ext;
 mod ser;
