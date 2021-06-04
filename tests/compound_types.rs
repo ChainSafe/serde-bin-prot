@@ -82,3 +82,8 @@ fn roundtrip_nested_structs() {
 fn roundtrip_enum() {
     common::roundtrip_test(E::A);
 }
+
+#[test]
+fn roundtrip_owned_string() {
+    common::roundtrip_test("serde-bin-prot".to_string());
+}
