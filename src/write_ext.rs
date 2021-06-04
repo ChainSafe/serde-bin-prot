@@ -102,6 +102,21 @@ pub trait WriteBinProtExt: io::Write {
     fn bin_write_float64(&mut self, f: &f64) -> Result<usize, io::Error> {
         self.write(&f.to_le_bytes()).map(|_| 8)
     }
+
+
+    // for enums/variants with n variants the variant index
+    // is written out as follows:
+    // n <= 256    ->  write out lower 8 bits of n  (1 byte)
+    // n <= 65536  ->  write out lower 16 bits of n (2 bytes)
+    fn bin_write_variant_index(&mut self, i: u32) -> Result<usize, io::Error> {
+        // WARNING: This does not implement the requirement above
+        // It is tricky to determine how many variants an enum has
+        // and therfore which of the above cases to use
+        // This assumes all enums have < 256 variants
+        // This probably catches 99% of cases but is not strictly
+        // in compliance with the protocol
+        self.write_u8(i as u8).map(|_| 1) // truncating downcast
+    }
 }
 
 /// All types that implement `Write` get methods defined in `WriteBinProtIntegerExt`

@@ -110,6 +110,11 @@ pub trait ReadBinProtExt: io::Read {
         }
         .ok_or(Error::DestinationIntegerOverflow)
     }
+
+    fn bin_read_variant_index(&mut self) -> Result<u8> {
+        self.read_u8().map_err(|e| Error::Io(e))
+    }
+
 }
 
 /// All types that implement `Read` get methods defined in `ReadBinProtIntegerExt`

@@ -54,6 +54,10 @@ pub enum Error {
         pos: usize,
     },
 
+    /// Functionality will not be implemented. Probably it does not make sense for this format
+    #[error("Functionality will not be implemented. Probably it does not make sense for this format")]    
+    WontImplement,
+
     /// Some user-defined error occurred.
     #[error("{message}")]
     Custom {

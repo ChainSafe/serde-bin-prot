@@ -21,6 +21,38 @@ struct TestFieldAttrs {
     i: i16,
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub struct CompressedPoly {
+    version: u8,
+    x: [u8; 32],
+    is_odd: bool
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub enum E {
+    A, B, C
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub struct PublicKey{
+    version: u8,
+    poly: CompressedPoly
+}
+
+
+impl PublicKey {
+    pub fn new() -> Self{
+        PublicKey {
+            version: 1,
+            poly: CompressedPoly {
+                version: 1,
+                x: [0x0; 32],
+                is_odd: false
+            }
+        }
+    }
+}
+
 #[test]
 fn roundtrip_tuple_struct() {
     common::roundtrip_test(TestTupleStruct(
@@ -37,6 +69,16 @@ fn roundtrip_tuple_struct() {
 }
 
 #[test]
+fn roundtrip_array_in_struct() {
+    common::roundtrip_test( PublicKey::new() )
+}
+
+#[test]
 fn roundtrip_nested_structs() {
     common::roundtrip_test(B { a: A(false) });
+}
+
+#[test]
+fn roundtrip_enum() {
+    common::roundtrip_test(E::A);
 }
