@@ -111,6 +111,10 @@ pub trait ReadBinProtExt: io::Read {
         .ok_or(Error::DestinationIntegerOverflow)
     }
 
+    fn bin_read_variant_index(&mut self) -> Result<u8> {
+        self.read_u8().map_err(Error::Io)
+    }
+
     fn bin_read_string(&mut self) -> Result<String> {
         let len = self.bin_read_nat0::<u64>()? as usize;
         let mut buf = vec![0u8; len as usize];
