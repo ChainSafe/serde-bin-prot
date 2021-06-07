@@ -359,7 +359,7 @@ impl<'de, 'a, R: Read> EnumAccess<'de> for Enum<'a, R> {
     {
         let index = self.de.rdr.bin_read_variant_index()?;
         let de: U32Deserializer<Self::Error> = (index as u32).into_deserializer();
-        let v = DeserializeSeed::deserialize(seed, de)?; // let val = seed.deserialize(&mut *self.de)?;
+        let v = DeserializeSeed::deserialize(seed, de)?;
         Ok((v, self))
     }
 }
