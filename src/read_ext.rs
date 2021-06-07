@@ -112,7 +112,7 @@ pub trait ReadBinProtExt: io::Read {
     }
 
     fn bin_read_variant_index(&mut self) -> Result<u8> {
-        self.read_u8().map_err(|e| Error::Io(e))
+        self.read_u8().map_err(Error::Io)
     }
 
     fn bin_read_string(&mut self) -> Result<String> {

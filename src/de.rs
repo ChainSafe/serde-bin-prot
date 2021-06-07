@@ -1,7 +1,9 @@
 use crate::error::{Error, Result};
 use crate::ReadBinProtExt;
 use byteorder::{LittleEndian, ReadBytesExt};
-use serde::de::{self, EnumAccess, Visitor};
+use serde::de::{
+    self, value::U32Deserializer, DeserializeSeed, EnumAccess, IntoDeserializer, Visitor,
+};
 use serde::Deserialize;
 use std::io::{BufReader, Read};
 
@@ -29,7 +31,7 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: Visitor<'de>,
     {
-        // can only deserialize any for a self describing protocol 
+        // can only deserialize any for a self describing protocol
         // which bin_io is not
         Err(Error::WontImplement)
     }
@@ -355,8 +357,10 @@ impl<'de, 'a, R: Read> EnumAccess<'de> for Enum<'a, R> {
     where
         V: de::DeserializeSeed<'de>,
     {
-        let val = seed.deserialize(&mut *self.de)?;
-        Ok((val, self))
+        let index = self.de.rdr.bin_read_variant_index()?;
+        let de: U32Deserializer<Self::Error> = (index as u32).into_deserializer();
+        let v = DeserializeSeed::deserialize(seed, de)?; // let val = seed.deserialize(&mut *self.de)?;
+        Ok((v, self))
     }
 }
 

@@ -103,7 +103,6 @@ pub trait WriteBinProtExt: io::Write {
         self.write(&f.to_le_bytes()).map(|_| 8)
     }
 
-
     // for enums/variants with n variants the variant index
     // is written out as follows:
     // n <= 256    ->  write out lower 8 bits of n  (1 byte)

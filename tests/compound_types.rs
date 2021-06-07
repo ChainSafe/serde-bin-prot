@@ -25,30 +25,31 @@ struct TestFieldAttrs {
 pub struct CompressedPoly {
     version: u8,
     x: [u8; 32],
-    is_odd: bool
+    is_odd: bool,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub enum E {
-    A, B, C
+    A,
+    B,
+    C,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-pub struct PublicKey{
+pub struct PublicKey {
     version: u8,
-    poly: CompressedPoly
+    poly: CompressedPoly,
 }
 
-
 impl PublicKey {
-    pub fn new() -> Self{
+    pub fn new() -> Self {
         PublicKey {
             version: 1,
             poly: CompressedPoly {
                 version: 1,
                 x: [0x0; 32],
-                is_odd: false
-            }
+                is_odd: false,
+            },
         }
     }
 }
@@ -70,7 +71,7 @@ fn roundtrip_tuple_struct() {
 
 #[test]
 fn roundtrip_array_in_struct() {
-    common::roundtrip_test( PublicKey::new() )
+    common::roundtrip_test(PublicKey::new())
 }
 
 #[test]
