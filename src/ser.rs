@@ -25,20 +25,6 @@ where
     fn write_byte(&mut self, b: u8) -> Result<()> {
         self.write(&[b])
     }
-
-    // for enums/variants with n variants the variant index
-    // is written out as follows:
-    // n <= 256    ->  write out lower 8 bits of n  (1 byte)
-    // n <= 65536  ->  write out lower 16 bits of n (2 bytes)
-    fn write_variant_index(&mut self, i: u32) -> Result<()> {
-        // WARNING: This does not implement the requirement above
-        // It is tricky to determine how many variants an enum has
-        // and therfore which of the above cases to use
-        // This assumes all enums have < 256 variants
-        // This probably catches 99% of cases but is not strictly
-        // in compliance with the protocol
-        self.write_byte(i as u8) // truncating downcast
-    }
 }
 
 pub fn to_writer<W, T>(writer: &mut W, value: &T) -> Result<()>
@@ -262,7 +248,8 @@ where
         variant_index: u32,
         _variant: &'static str,
     ) -> Result<()> {
-        self.write_variant_index(variant_index)
+        self.writer.bin_write_variant_index(variant_index)?;
+        Ok(())
     }
 
     fn serialize_tuple_variant(
@@ -272,7 +259,7 @@ where
         _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleVariant> {
-        self.write_variant_index(variant_index)?;
+        self.writer.bin_write_variant_index(variant_index)?;
         Ok(self)
     }
 
@@ -283,7 +270,7 @@ where
         _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeStructVariant> {
-        self.write_variant_index(variant_index)?;
+        self.writer.bin_write_variant_index(variant_index)?;
         Ok(self)
     }
 
@@ -298,7 +285,7 @@ where
     where
         T: ?Sized + Serialize,
     {
-        self.write_variant_index(variant_index)?;
+        self.writer.bin_write_variant_index(variant_index)?;
         value.serialize(self)
     }
 }
