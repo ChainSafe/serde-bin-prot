@@ -92,7 +92,7 @@ where
     }
 
     fn serialize_u8(self, v: u8) -> Result<()> {
-        self.writer.bin_write_integer(v)?;
+        self.write_byte(v)?;
         Ok(())
     }
 

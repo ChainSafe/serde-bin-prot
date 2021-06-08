@@ -47,7 +47,7 @@ impl PublicKey {
             version: 1,
             poly: CompressedPoly {
                 version: 1,
-                x: [0x0; 32],
+                x: [0xFF; 32],
                 is_odd: false,
             },
         }
