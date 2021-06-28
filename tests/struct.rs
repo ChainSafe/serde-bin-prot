@@ -5,19 +5,19 @@ use std::f64::INFINITY;
 mod common;
 
 #[derive(Debug)]
-enum TestCaseType {
+enum StructTestCases {
     TestA(A),
     TestB(B),
 }
 
 #[derive(Debug)]
 struct TestCase {
-    input: TestCaseType,
+    input: StructTestCases,
     expected: Vec<u8>,
 }
 
 impl TestCase {
-    pub fn new(input: TestCaseType, expected: Vec<u8>) -> Self {
+    fn new(input: StructTestCases, expected: Vec<u8>) -> Self {
         TestCase {
             input: input,
             expected: expected,
@@ -32,15 +32,15 @@ struct A {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct b_inner {
-    w: i64,
-    x: i64,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
 struct B {
     y: b_inner,
     z: Option<i64>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct b_inner {
+    w: i64,
+    x: i64,
 }
 
 fn struct_test_cases() -> Vec<TestCase> {
@@ -79,10 +79,10 @@ fn struct_test_cases() -> Vec<TestCase> {
     b1_expected.reverse();
 
     vec![
-        TestCase::new(TestCaseType::TestA(a0), a0_expected),
-        TestCase::new(TestCaseType::TestA(a1), a1_expected),
-        TestCase::new(TestCaseType::TestB(b0), b0_expected),
-        TestCase::new(TestCaseType::TestB(b1), b1_expected),
+        TestCase::new(StructTestCases::TestA(a0), a0_expected),
+        TestCase::new(StructTestCases::TestA(a1), a1_expected),
+        TestCase::new(StructTestCases::TestB(b0), b0_expected),
+        TestCase::new(StructTestCases::TestB(b1), b1_expected),
     ]
 }
 
@@ -96,8 +96,8 @@ fn test_serialize_structs() {
         }
 
         match val.input {
-            TestCaseType::TestA(input) => encode_and_compare(input, val.expected),
-            TestCaseType::TestB(input) => encode_and_compare(input, val.expected),
+            StructTestCases::TestA(input) => encode_and_compare(input, val.expected),
+            StructTestCases::TestB(input) => encode_and_compare(input, val.expected),
         };
     }
 }
