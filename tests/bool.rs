@@ -1,4 +1,3 @@
-//use difference::Changeset;
 use serde_bin_prot::to_writer;
 use std::fmt::Write;
 
@@ -25,14 +24,9 @@ fn bool_test_cases() -> Vec<TestCase<bool>> {
 
 #[test]
 fn test_serialize_bools() {
-    let mut buf = String::new();
-    writeln!(&mut buf).unwrap();
-
     for val in bool_test_cases() {
-        //println!("case {:?}", val);
         let mut output = Vec::<u8>::new();
         to_writer(&mut output, &val.input).unwrap();
-        //println!("out {:?}", output);
         assert_eq!(val.expected, output);
     }
 }
