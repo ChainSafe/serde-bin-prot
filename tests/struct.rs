@@ -25,19 +25,19 @@ impl TestCase {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct A {
     x: i64,
     y: f64,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct B {
     y: b_inner,
     z: Option<i64>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct b_inner {
     w: i64,
     x: i64,
@@ -98,6 +98,16 @@ fn test_serialize_structs() {
         match val.input {
             StructTestCases::TestA(input) => encode_and_compare(input, val.expected),
             StructTestCases::TestB(input) => encode_and_compare(input, val.expected),
+        };
+    }
+}
+
+#[test]
+fn test_roundtrip_structs() {
+    for val in struct_test_cases() {
+        match val.input {
+            StructTestCases::TestA(input) => common::roundtrip_test(input),
+            StructTestCases::TestB(input) => common::roundtrip_test(input),
         };
     }
 }
