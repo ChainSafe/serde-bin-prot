@@ -3,26 +3,12 @@ use serde_bin_prot::to_writer;
 use std::f64::INFINITY;
 
 mod common;
+use common::TestCase;
 
 #[derive(Debug)]
 enum StructTestCases {
     TestA(A),
     TestB(B),
-}
-
-#[derive(Debug)]
-struct TestCase {
-    input: StructTestCases,
-    expected: Vec<u8>,
-}
-
-impl TestCase {
-    fn new(input: StructTestCases, expected: Vec<u8>) -> Self {
-        TestCase {
-            input: input,
-            expected: expected,
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -43,7 +29,7 @@ struct b_inner {
     x: i64,
 }
 
-fn struct_test_cases() -> Vec<TestCase> {
+fn struct_test_cases() -> Vec<TestCase<StructTestCases>> {
     let a0 = A { x: 0, y: 0.0 };
 
     let a0_expected = vec![0, 0, 0, 0, 0, 0, 0, 0, 0];

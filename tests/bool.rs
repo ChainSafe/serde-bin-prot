@@ -1,22 +1,7 @@
 use serde_bin_prot::to_writer;
-use std::fmt::Write;
 
 mod common;
-
-#[derive(Debug)]
-pub struct TestCase<T> {
-    input: T,
-    expected: Vec<u8>,
-}
-
-impl<T> TestCase<T> {
-    pub fn new(input: T, expected: Vec<u8>) -> Self {
-        TestCase {
-            input: input,
-            expected: expected,
-        }
-    }
-}
+use common::TestCase;
 
 fn bool_test_cases() -> Vec<TestCase<bool>> {
     vec![TestCase::new(true, vec![1]), TestCase::new(false, vec![0])]
