@@ -19,12 +19,12 @@ struct A {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct B {
-    y: b_inner,
+    y: BInner,
     z: Option<i64>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-struct b_inner {
+struct BInner {
     w: i64,
     x: i64,
 }
@@ -45,14 +45,14 @@ fn struct_test_cases() -> Vec<TestCase<StructTestCases>> {
     a1_expected.reverse();
 
     let b0 = B {
-        y: b_inner { w: 0, x: 0 },
+        y: BInner { w: 0, x: 0 },
         z: None,
     };
 
     let b0_expected = vec![0, 0, 0];
 
     let b1 = B {
-        y: b_inner {
+        y: BInner {
             w: 9223372036854775807,
             x: 2147483647,
         },
