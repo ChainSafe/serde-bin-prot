@@ -3,6 +3,21 @@ use serde_bin_prot::{from_reader, to_writer};
 use std::fmt::Debug;
 use std::fmt::Write;
 
+#[derive(Debug)]
+pub struct TestCase<T> {
+    pub input: T,
+    pub expected: Vec<u8>,
+}
+
+impl<T> TestCase<T> {
+    pub fn new(input: T, expected: Vec<u8>) -> Self {
+        TestCase {
+            input: input,
+            expected: expected,
+        }
+    }
+}
+
 /// Prints a byte array according to the style used in the Jane Street
 /// bin_prot tests. Byte array is reversed and padded up to max length with ..
 /// Bytes are written in hex with lowercase letters and no 0x prefix
