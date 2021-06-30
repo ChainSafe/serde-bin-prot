@@ -4,7 +4,10 @@ mod common;
 use common::TestCase;
 
 fn bool_test_cases() -> Vec<TestCase<bool>> {
-    vec![TestCase::new(true, vec![1]), TestCase::new(false, vec![0])]
+    vec![
+        TestCase::new(true, vec![0x01]),
+        TestCase::new(false, vec![0x00]),
+    ]
 }
 
 #[test]

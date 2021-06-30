@@ -32,7 +32,7 @@ struct BInner {
 fn struct_test_cases() -> Vec<TestCase<StructTestCases>> {
     let a0 = A { x: 0, y: 0.0 };
 
-    let a0_expected = vec![0, 0, 0, 0, 0, 0, 0, 0, 0];
+    let a0_expected = vec![0x00; 9];
 
     let a1 = A {
         x: 2147483647,
