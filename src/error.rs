@@ -24,6 +24,10 @@ pub enum Error {
     #[error("Attempting to serialize a sequence but size not provided")]
     SeqSizeNotProvided,
 
+    /// Size not given when serializing a sequence
+    #[error("Attempting to serialize a map but size not provided")]
+    MapSizeNotProvided,
+
     /// Invalid byte
     #[error(
         "Invalid byte for deserializing a {dtype}. Expected one of: {allowed:?}, found: {byte}"

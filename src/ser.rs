@@ -224,7 +224,7 @@ where
             Ok(self)
         } else {
             // size not provided. We cannot proceed
-            panic!()
+            Err(Error::MapSizeNotProvided)
         }
     }
 
