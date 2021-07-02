@@ -3,6 +3,19 @@ use serde_bin_prot::{from_reader, to_writer};
 use std::fmt::Debug;
 use std::fmt::Write;
 
+/// Macro that lets one use jane street's bin prot expect test cases blocks
+/// and assert using serde-bin-prot's APIs.
+#[macro_export]
+macro_rules! bin_prot_test {
+    ($($(..) * $($expected:literal) * -> $typ:expr),*)  => {
+        $(
+        let mut output = vec![];
+        serde_bin_prot::to_writer(&mut output, &$typ).expect("Failed writing bin-prot encoded data");
+        assert_eq!(vec![$($expected,)*], output.into_iter().rev().collect::<Vec<u8>>());
+        )*
+    };
+}
+
 #[derive(Debug)]
 pub struct TestCase<T> {
     pub input: T,

@@ -6,47 +6,20 @@ use std::fmt::Write;
 mod common;
 use common::print_byte_array;
 
-const MAX_BYTES: usize = 8;
-
-const EXPECTED: &str = r#"
-7f f0 00 00 00 00 00 00 -> inf
-ff f0 00 00 00 00 00 00 -> -inf
-3c b0 00 00 00 00 00 00 -> 2.2204460492503131E-16
-7f ef ff ff ff ff ff ff -> 1.7976931348623157E308
-bf f0 00 00 00 00 00 00 -> -1.0000000000000000E0
-3f f0 00 00 00 00 00 00 -> 1.0000000000000000E0
-00 00 00 00 00 00 00 00 -> 0.0000000000000000E0
-"#;
-
-const TEST_CASES: &[f64] = &[
-    f64::INFINITY,
-    f64::NEG_INFINITY, // min positive subnormal
-    f64::EPSILON,
-    f64::MAX, // max finnite
-    -1.0,
-    1.0,
-    0.0,
-];
-
 #[test]
-fn test_serialize_floats() {
-    let mut buf = String::new();
-    writeln!(&mut buf).unwrap();
-    for val in TEST_CASES {
-        let mut output = Vec::<u8>::new();
-        to_writer(&mut output, &val).unwrap();
-        print_byte_array(&mut buf, &output, MAX_BYTES);
-        writeln!(&mut buf, "-> {:.16E}", val).expect("its cooked");
-    }
-
-    let cs = Changeset::new(&buf, EXPECTED, "");
-    println!("{}", cs);
-    assert_eq!(cs.distance, 0)
-}
-
-#[test]
-fn test_roundtrip_floats() {
-    for val in TEST_CASES {
-        common::roundtrip_test(*val);
+fn test_float() {
+    bin_prot_test! {
+        0x3c 0xb0 00 00 00 00 00 00 -> 2.2204460492503131E-16,
+        0x7f 0xf0 00 00 00 00 00 00 -> f64::INFINITY,
+        0x7f 0xef 0xff 0xff 0xff 0xff 0xff 0xff -> 1.7976931348623157E+308,
+        0x7f 0xf0 00 00 00 00 00 00 -> f64::INFINITY,
+        00 0x10 00 00 00 00 00 00 -> 2.2250738585072014E-308,
+        00 00 00 00 00 00 00 0x01 -> 4.94065645841247E-324,
+        0xff 0xf0 00 00 00 00 00 00 -> f64::NEG_INFINITY,
+        0xbf 0xf0 00 00 00 00 00 00 -> -1f64,
+        0xff 0xf0 00 00 00 00 00 00 -> f64::NEG_INFINITY,
+        0x3f 0xf0 00 00 00 00 00 00 -> 1f64,
+        0x3e 0x7a 0xd7 0xf2 0x9a 0xbc 0xaf 0x48 -> 1E-07
+        // 00 00 00 00 00 00 00 00 -> 0 // FIXME
     }
 }
