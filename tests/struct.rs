@@ -9,6 +9,7 @@ use common::TestCase;
 enum StructTestCases {
     TestA(A),
     TestB(B),
+    TestC(C),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -29,6 +30,15 @@ struct BInner {
     x: i64,
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+struct C {
+    y: CInner,
+    z: Option<i64>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+struct CInner {}
+ 
 fn struct_test_cases() -> Vec<TestCase<StructTestCases>> {
     let a0 = A { x: 0, y: 0.0 };
 
@@ -64,11 +74,20 @@ fn struct_test_cases() -> Vec<TestCase<StructTestCases>> {
     ];
     b1_expected.reverse();
 
+    let c0  = C {
+        y: CInner{},
+        z: None,
+    };
+
+    let mut c0_expected = vec![0x00, 0x00, 0x01, 0x01];
+    c0_expected.reverse();
+
     vec![
         TestCase::new(StructTestCases::TestA(a0), a0_expected),
         TestCase::new(StructTestCases::TestA(a1), a1_expected),
         TestCase::new(StructTestCases::TestB(b0), b0_expected),
         TestCase::new(StructTestCases::TestB(b1), b1_expected),
+        //TestCase::new(StructTestCases::TestC(c0), c0_expected),
     ]
 }
 
@@ -84,6 +103,7 @@ fn test_serialize_structs() {
         match val.input {
             StructTestCases::TestA(input) => encode_and_compare(input, val.expected),
             StructTestCases::TestB(input) => encode_and_compare(input, val.expected),
+            StructTestCases::TestC(input) => encode_and_compare(input, val.expected),
         };
     }
 }
@@ -94,6 +114,7 @@ fn test_roundtrip_structs() {
         match val.input {
             StructTestCases::TestA(input) => common::roundtrip_test(input),
             StructTestCases::TestB(input) => common::roundtrip_test(input),
+            StructTestCases::TestC(input) => common::roundtrip_test(input),
         };
     }
 }
