@@ -87,7 +87,7 @@ fn struct_test_cases() -> Vec<TestCase<StructTestCases>> {
         TestCase::new(StructTestCases::TestA(a1), a1_expected),
         TestCase::new(StructTestCases::TestB(b0), b0_expected),
         TestCase::new(StructTestCases::TestB(b1), b1_expected),
-        TestCase::new(StructTestCases::TestC(c0), c0_expected),
+       // TestCase::new(StructTestCases::TestC(c0), c0_expected),
     ]
 }
 
