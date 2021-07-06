@@ -38,7 +38,7 @@ struct C {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct CInner {}
- 
+
 fn struct_test_cases() -> Vec<TestCase<StructTestCases>> {
     let a0 = A { x: 0, y: 0.0 };
 
@@ -74,8 +74,8 @@ fn struct_test_cases() -> Vec<TestCase<StructTestCases>> {
     ];
     b1_expected.reverse();
 
-    let c0  = C {
-        y: CInner{},
+    let c0 = C {
+        y: CInner {},
         z: None,
     };
 
@@ -87,7 +87,7 @@ fn struct_test_cases() -> Vec<TestCase<StructTestCases>> {
         TestCase::new(StructTestCases::TestA(a1), a1_expected),
         TestCase::new(StructTestCases::TestB(b0), b0_expected),
         TestCase::new(StructTestCases::TestB(b1), b1_expected),
-        //TestCase::new(StructTestCases::TestC(c0), c0_expected),
+        TestCase::new(StructTestCases::TestC(c0), c0_expected),
     ]
 }
 
