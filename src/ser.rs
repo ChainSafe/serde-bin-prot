@@ -202,8 +202,10 @@ where
     // specified in the type definition.
     // Polymorphic record fields are supported unless a value of the type bound
     // by the field were accessed, which would lead to an exception.
-    fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple> {
-        Ok(self)
+    fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple> {
+        // write the output length first
+        self.writer.bin_write_nat0(len as u64)?;
+        Ok(self) // pass self as the handler for writing the elements
     }
 
     // Tuple structs look just like sequences in JSON.
