@@ -5,6 +5,7 @@
 /// Note the bytes are little-endian encoded.
 ///
 /// These tests can be parsed and executed directly from their source
+
 use std::collections::HashSet;
 mod common;
 
