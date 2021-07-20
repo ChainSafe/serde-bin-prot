@@ -4,6 +4,7 @@ pub mod error;
 pub mod integers;
 mod read_ext;
 mod ser;
+pub mod value;
 mod write_ext;
 
 pub use de::{from_reader, Deserializer};

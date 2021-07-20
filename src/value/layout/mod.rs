@@ -7,6 +7,7 @@ use serde::Deserialize;
 use serde_json::from_value;
 
 mod list_tagged_enum;
+mod traverse;
 
 use list_tagged_enum::ListTaggedEnum;
 
@@ -22,7 +23,7 @@ pub struct Layout {
 }
 
 /// Recursively defined BinProtRule is how the type tree is constructed
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 #[serde(try_from = "ListTaggedEnum")]
 pub enum BinProtRule {
     Nat0,
@@ -119,33 +120,33 @@ impl TryFrom<ListTaggedEnum> for BinProtRule {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 pub struct RecordField {
     field_name: String,
     field_rule: BinProtRule,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 pub struct Summand {
     ctor_name: String,
     index: i32,
     ctor_args: Vec<BinProtRule>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 pub struct HashTblEntry {
     key_rule: Box<BinProtRule>,
     value_rule: Box<BinProtRule>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 #[serde(try_from = "ListTaggedEnum")]
 pub enum Polyvar {
     Tagged(TaggedPolyvar),
     Inherited(BinProtRule),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 pub struct TaggedPolyvar {
     polyvar_name: String,
     hash: i32,
@@ -168,20 +169,20 @@ impl TryFrom<ListTaggedEnum> for Polyvar {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 #[serde(try_from = "ListTaggedEnum")]
 pub enum RuleRef {
     Unresolved(UnresolvedPayload),
     Resolved(ResolvedPayload),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 pub struct UnresolvedPayload {
     params: Vec<BinProtRule>,
     layout_id: String, // what is longident?
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 pub struct ResolvedPayload {
     source_type_decl: String,
     #[serde(default)]

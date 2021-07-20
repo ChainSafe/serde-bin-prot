@@ -1,5 +1,6 @@
 //! The Value enum, a loosely typed way of representing any valid bin_prot value.
 
+mod de;
 mod layout;
 
 // use serde::{Serialize, Deserialize};
@@ -15,8 +16,12 @@ pub enum Value {
     Option(Box<Value>),
     Record(Vec<(String, Value)>), // records/structs
     Tuple(Vec<Value>),
-    Sum { name: String, index: usize, value: Box<Value> }, // sum types/enums
-    List(Box<Value>),
+    Sum {
+        name: String,
+        index: usize,
+        value: Box<Value>,
+    }, // sum types/enums
+    List(Vec<Value>),
 }
 
 impl Default for Value {
