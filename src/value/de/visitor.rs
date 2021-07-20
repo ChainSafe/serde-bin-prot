@@ -1,3 +1,5 @@
+
+use serde::de::MapAccess;
 use crate::value::Value;
 use serde::de::SeqAccess;
 use serde::de::Visitor;
@@ -9,7 +11,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
     type Value = Value;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("any valid JSON value")
+        formatter.write_str("any valid OCaml value")
     }
 
     #[inline]
@@ -32,7 +34,6 @@ impl<'de> Visitor<'de> for ValueVisitor {
         Ok(Value::Float(value))
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
     #[inline]
     fn visit_str<E>(self, value: &str) -> Result<Value, E>
     where
@@ -41,7 +42,6 @@ impl<'de> Visitor<'de> for ValueVisitor {
         self.visit_string(String::from(value))
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
     #[inline]
     fn visit_string<E>(self, value: String) -> Result<Value, E> {
         Ok(Value::String(value))
@@ -49,7 +49,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
 
     #[inline]
     fn visit_none<E>(self) -> Result<Value, E> {
-        Ok(Value::Unit)
+        Ok(Value::Option(None))
     }
 
     #[inline]
@@ -57,7 +57,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
     where
         D: serde::Deserializer<'de>,
     {
-        Deserialize::deserialize(deserializer)
+        Ok(Value::Option(Some(Box::new(Deserialize::deserialize(deserializer)?))))
     }
 
     #[inline]
@@ -71,41 +71,20 @@ impl<'de> Visitor<'de> for ValueVisitor {
         V: SeqAccess<'de>,
     {
         let mut vec = Vec::new();
-
         while let Some(elem) = visitor.next_element()? {
             vec.push(elem);
         }
-
         Ok(Value::List(vec))
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
     fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>
     where
         V: MapAccess<'de>,
     {
-        match visitor.next_key_seed(KeyClassifier)? {
-            #[cfg(feature = "arbitrary_precision")]
-            Some(KeyClass::Number) => {
-                let number: NumberFromString = visitor.next_value()?;
-                Ok(Value::Number(number.value))
-            }
-            #[cfg(feature = "raw_value")]
-            Some(KeyClass::RawValue) => {
-                let value = visitor.next_value_seed(crate::raw::BoxedFromString)?;
-                crate::from_str(value.get()).map_err(de::Error::custom)
-            }
-            Some(KeyClass::Map(first_key)) => {
-                let mut values = Map::new();
-
-                values.insert(first_key, tri!(visitor.next_value()));
-                while let Some((key, value)) = tri!(visitor.next_entry()) {
-                    values.insert(key, value);
-                }
-
-                Ok(Value::Object(values))
-            }
-            None => Ok(Value::Object(Map::new())),
+        let mut values = Vec::new();
+        while let Some((k, v)) = visitor.next_entry()? {
+            values.push((k, v))
         }
+        Ok(Value::Record(values))
     }
 }

@@ -29,14 +29,14 @@ pub struct BinProtRuleIterator {
 /// An iterator where the next item may require specifying a branch to take
 /// At some points in its iteration the iterator will require a call to branch to select which
 /// path to take before continuing
-trait BranchingIterator {
+pub trait BranchingIterator {
     type Item;
     type Error;
     fn next(&mut self) -> BranchIterResult<Self::Item, Self::Error>;
     fn branch(&mut self, branch: usize) -> Result<(), Self::Error>;
 }
 
-enum BranchIterResult<T, E> {
+pub enum BranchIterResult<T, E> {
     Item(T),
     Err(E),
     Branch,
@@ -124,7 +124,7 @@ impl BranchingIterator for BinProtRuleIterator {
 
 // Consumes the rule and produces a branching iterator
 impl BinProtRule {
-    fn into_iter(self) -> BinProtRuleIterator {
+    pub fn into_iter(self) -> BinProtRuleIterator {
         BinProtRuleIterator {
             stack: vec![self],
             branch: None,
@@ -146,7 +146,7 @@ mod tests {
   "bin_io_derived": true,
   "bin_prot_rule": [
     "Option",
-    [
+    [r
       "Tuple",
       [
         [
@@ -266,115 +266,116 @@ mod tests {
   "type_decl": "<unknown>",
   "bin_io_derived": true,
   "bin_prot_rule":
-	[
-	    "Sum",
-	    [
-	        {
-	            "ctor_name": "Sca1lar_challenge",
-	            "index": 0,
-	            "ctor_args": [
-	                [
-	                    "Reference",
-	                    [
-	                        "Resolved",
-	                        {
-	                            "source_type_decl": "type 'a t = { version: int ; t: 'a typ }",
-	                            "bin_io_derived": false,
-	                            "ref_rule": [
-	                                "Record",
-	                                [
-	                                    {
-	                                        "field_name": "version",
-	                                        "field_rule": [
-	                                            "Int"
-	                                        ]
-	                                    },
-	                                    {
-	                                        "field_name": "t",
-	                                        "field_rule": [
-	                                            "Reference",
-	                                            [
-	                                                "Resolved",
-	                                                {
-	                                                    "source_type_decl": "type 'a typ = 'a t",
-	                                                    "bin_io_derived": false,
-	                                                    "ref_rule": [
-	                                                        "Reference",
-	                                                        [
-	                                                            "Resolved",
-	                                                            {
-	                                                                "source_type_decl": "'a t = ('a, Nat.N2.n) vec",
-	                                                                "bin_io_derived": false,
-	                                                                "ref_rule": [
-	                                                                    "Reference",
-	                                                                    [
-	                                                                        "Resolved",
-	                                                                        {
-	                                                                            "source_type_decl": "type t = { version: int ; t: typ }",
-	                                                                            "bin_io_derived": false,
-	                                                                            "ref_rule": [
-	                                                                                "Record",
-	                                                                                [
-	                                                                                    {
-	                                                                                        "field_name": "version",
-	                                                                                        "field_rule": [
-	                                                                                            "Int"
-	                                                                                        ]
-	                                                                                    },
-	                                                                                    {
-	                                                                                        "field_name": "t",
-	                                                                                        "field_rule": [
-	                                                                                            "Reference",
-	                                                                                            [
-	                                                                                                "Resolved",
-	                                                                                                {
-	                                                                                                    "source_type_decl": "type typ = t",
-	                                                                                                    "bin_io_derived": false,
-	                                                                                                    "ref_rule": [
-	                                                                                                        "Reference",
-	                                                                                                        [
-	                                                                                                            "Resolved",
-	                                                                                                            {
-	                                                                                                                "source_type_decl": "Core_kernel.Int64.t",
-	                                                                                                                "bin_io_derived": true,
-	                                                                                                                "ref_rule": [
-	                                                                                                                    "Int64"
-	                                                                                                                ]
-	                                                                                                            }
-	                                                                                                        ]
-	                                                                                                    ]
-	                                                                                                }
-	                                                                                            ]
-	                                                                                        ]
-	                                                                                    }
-	                                                                                ]
-	                                                                            ]
-	                                                                        }
-	                                                                    ]
-	                                                                ]
-	                                                            }
-	                                                        ]
-	                                                    ]
-	                                                }
-	                                            ]
-	                                        ]
-	                                    }
-	                                ]
-	                            ]
-	                        }
-	                    ]
-	                ]
-	            ]
-	        }
-	    ]
-	]
+  [
+    "Sum",
+    [
+      {
+        "ctor_name": "Sca1lar_challenge",
+        "index": 0,
+        "ctor_args": [
+          [
+            "Reference",
+            [
+              "Resolved",
+              {
+                "source_type_decl": "type 'a t = { version: int ; t: 'a typ }",
+                "bin_io_derived": false,
+                "ref_rule": [
+                  "Record",
+                  [
+                    {
+                      "field_name": "version",
+                      "field_rule": [
+                        "Int"
+                      ]
+                    },
+                    {
+                      "field_name": "t",
+                      "field_rule": [
+                        "Reference",
+                        [
+                          "Resolved",
+                          {
+                            "source_type_decl": "type 'a typ = 'a t",
+                            "bin_io_derived": false,
+                            "ref_rule": [
+                              "Reference",
+                              [
+                                "Resolved",
+                                {
+                                  "source_type_decl": "'a t = ('a, Nat.N2.n) vec",
+                                  "bin_io_derived": false,
+                                  "ref_rule": [
+                                    "Reference",
+                                    [
+                                      "Resolved",
+                                      {
+                                        "source_type_decl": "type t = { version: int ; t: typ }",
+                                        "bin_io_derived": false,
+                                        "ref_rule": [
+                                          "Record",
+                                          [
+                                            {
+                                              "field_name": "version",
+                                              "field_rule": [
+                                                "Int"
+                                              ]
+                                            },
+                                            {
+                                              "field_name": "t",
+                                              "field_rule": [
+                                                "Reference",
+                                                [
+                                                  "Resolved",
+                                                  {
+                                                    "source_type_decl": "type typ = t",
+                                                    "bin_io_derived": false,
+                                                    "ref_rule": [
+                                                      "Reference",
+                                                      [
+                                                        "Resolved",
+                                                        {
+                                                          "source_type_decl": "Core_kernel.Int64.t",
+                                                          "bin_io_derived": true,
+                                                          "ref_rule": [
+                                                            "Int64"
+                                                          ]
+                                                        }
+                                                      ]
+                                                    ]
+                                                  }
+                                                ]
+                                              ]
+                                            }
+                                          ]
+                                        ]
+                                      }
+                                    ]
+                                  ]
+                                }
+                              ]
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ]
+              }
+            ]
+          ]
+        ]
+      }
+    ]
+  ]
 }"#;
 
     #[test]
     fn test_layout_sum() {
         let layout: Layout = serde_json::from_str(TEST_LAYOUT_SUM).unwrap();
         let mut iter = layout.bin_prot_rule.into_iter();
-
+        // Test by taking the 0th branch at each branch node. Test is considered as pass
+        // if no errors are thrown from the traversal
         loop {
             match iter.next() {
                 BranchIterResult::Item(v) => {
