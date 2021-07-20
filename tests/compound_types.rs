@@ -36,6 +36,13 @@ pub enum E {
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub enum EnumWithValues {
+    A(bool),
+    B(i32, f32),
+    C(Option<bool>),
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct PublicKey {
     version: u8,
     poly: CompressedPoly,
@@ -82,6 +89,11 @@ fn roundtrip_nested_structs() {
 #[test]
 fn roundtrip_enum() {
     common::roundtrip_test(E::A);
+}
+
+#[test]
+fn roundtrip_enum_with_values() {
+    common::roundtrip_test(EnumWithValues::C(Some(true)));
 }
 
 #[test]

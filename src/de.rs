@@ -24,7 +24,7 @@ impl<R: Read> Deserializer<R> {
     pub fn from_reader_with_layout(rdr: R, layout: BinProtRule) -> Self {
         Self {
             rdr: BufReader::new(rdr),
-            layout_iter: Some(layout.into_iter()),
+            layout_iter: Some(layout.into_branching_iter()),
         }
     }
 }
@@ -57,10 +57,10 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                                 return visitor.visit_seq(SeqAccess::new(self, items.len()))
                             }
                             BinProtRule::Sum(_) => {
-                                // retrieve the index
-                                // ensure the iterator takes the correct branch
-                                // deserialize the enum
-                                unimplemented!()
+                                // read the enum variant index. We need it to
+                                let index = self.rdr.bin_read_variant_index()?;
+                                iter.branch(index.into()).expect("invalid branch index");
+                                return visitor.visit_enum(Enum::new(self, index));
                             }
                             BinProtRule::Bool => return self.deserialize_bool(visitor),
                             BinProtRule::Option(_) => return self.deserialize_option(visitor),
@@ -308,7 +308,8 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: Visitor<'de>,
     {
-        visitor.visit_enum(Enum::new(self))
+        let index = self.rdr.bin_read_variant_index()?;
+        visitor.visit_enum(Enum::new(self, index))
     }
 
     fn deserialize_identifier<V>(self, _visitor: V) -> Result<V::Value>
@@ -392,11 +393,12 @@ impl<'de: 'a, 'a, R: Read> de::MapAccess<'de> for SeqAccess<'a, R> {
 
 struct Enum<'a, R: Read> {
     de: &'a mut Deserializer<R>,
+    index: u8,
 }
 
 impl<'a, 'de, R: Read> Enum<'a, R> {
-    fn new(de: &'a mut Deserializer<R>) -> Self {
-        Enum { de }
+    fn new(de: &'a mut Deserializer<R>, index: u8) -> Self {
+        Enum { de, index }
     }
 }
 
@@ -410,8 +412,7 @@ impl<'de, 'a, R: Read> EnumAccess<'de> for Enum<'a, R> {
     where
         V: de::DeserializeSeed<'de>,
     {
-        let index = self.de.rdr.bin_read_variant_index()?;
-        let de: U32Deserializer<Self::Error> = (index as u32).into_deserializer();
+        let de: U32Deserializer<Self::Error> = (self.index as u32).into_deserializer();
         let v = DeserializeSeed::deserialize(seed, de)?;
         Ok((v, self))
     }

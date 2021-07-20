@@ -9,7 +9,7 @@ use serde_json::from_value;
 mod list_tagged_enum;
 mod traverse;
 
-pub use traverse::{BinProtRuleIterator, BranchingIterator, BranchIterResult};
+pub use traverse::{BinProtRuleIterator, BranchIterResult, BranchingIterator};
 
 use list_tagged_enum::ListTaggedEnum;
 

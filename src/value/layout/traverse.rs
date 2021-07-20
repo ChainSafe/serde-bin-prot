@@ -93,10 +93,10 @@ impl BranchingIterator for BinProtRuleIterator {
                     | BinProtRule::Float => {} // These are leaves so nothing required
                     r => panic!("unimplemented: {:?}", r),
                 };
-                return BranchIterResult::Item(r.unwrap());
+                BranchIterResult::Item(r.unwrap())
             }
-            None => return BranchIterResult::End, // end of traversal
-        };
+            None => BranchIterResult::End, // end of traversal
+        }
     }
 
     fn branch(&mut self, branch: usize) -> Result<(), Self::Error> {
@@ -113,7 +113,7 @@ impl BranchingIterator for BinProtRuleIterator {
             // check this is the right way around...
             let s = summands
                 .get_mut(branch)
-                .ok_or("Invalid branch".to_string())?;
+                .ok_or_else(|| "Invalid branch".to_string())?;
             self.stack.extend(s.ctor_args.drain(0..));
             Ok(())
         } else {
@@ -124,7 +124,7 @@ impl BranchingIterator for BinProtRuleIterator {
 
 // Consumes the rule and produces a branching iterator
 impl BinProtRule {
-    pub fn into_iter(self) -> BinProtRuleIterator {
+    pub fn into_branching_iter(self) -> BinProtRuleIterator {
         BinProtRuleIterator {
             stack: vec![self],
             branch: None,
@@ -253,7 +253,7 @@ mod tests {
     #[test]
     fn test_layout() {
         let layout: Layout = serde_json::from_str(TEST_LAYOUT).unwrap();
-        let mut iter = layout.bin_prot_rule.into_iter();
+        let mut iter = layout.bin_prot_rule.into_branching_iter();
         while let BranchIterResult::Item(v) = iter.next() {
             println!("{:?}\n", v);
         }
@@ -373,9 +373,9 @@ mod tests {
     #[test]
     fn test_layout_sum() {
         let layout: Layout = serde_json::from_str(TEST_LAYOUT_SUM).unwrap();
-        let mut iter = layout.bin_prot_rule.into_iter();
+        let mut iter = layout.bin_prot_rule.into_branching_iter();
         // Test by taking the 0th branch at each branch node. Test is considered as pass
-        // if no errors are thrown from the traversal
+        // if no error
         loop {
             match iter.next() {
                 BranchIterResult::Item(v) => {

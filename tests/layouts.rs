@@ -17,7 +17,7 @@ const SIMPLE_RULE: &str = r#"
 "#;
 
 #[test]
-fn test_layouts() {
+fn test_simple_rule() {
     let rule: BinProtRule = serde_json::from_str(SIMPLE_RULE).unwrap();
     let example = vec![0x01, 0x00, 0x00]; // Some((0, false))
 
@@ -31,4 +31,33 @@ fn test_layouts() {
             Value::Bool(false)
         ]))))
     )
+}
+
+const SUM_RULE: &str = r#"
+[
+  "Sum",
+  [
+    {
+      "ctor_name": "one",
+      "index": 0,
+      "ctor_args": [["Int"]]
+    },
+    {
+      "ctor_name": "two",
+      "index": 1,
+      "ctor_args": [["Bool"]]
+    }
+  ]
+]
+"#;
+
+#[test]
+fn test_sum_rule() {
+    let rule: BinProtRule = serde_json::from_str(SUM_RULE).unwrap();
+    let example = vec![0x00, 0x00]; // One((0))
+
+    let mut de = Deserializer::from_reader_with_layout(example.as_slice(), rule);
+    let result: Value = Deserialize::deserialize(&mut de).expect("Failed to deserialize");
+    println!("{:?}", result);
+    assert_eq!(result, Value::Int(0))
 }

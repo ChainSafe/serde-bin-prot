@@ -20,7 +20,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
 
     #[inline]
     fn visit_i64<E>(self, value: i64) -> Result<Value, E> {
-        Ok(Value::Int(value.into()))
+        Ok(Value::Int(value))
     }
 
     // #[inline]
@@ -88,4 +88,15 @@ impl<'de> Visitor<'de> for ValueVisitor {
         }
         Ok(Value::Record(values))
     }
+
+    // fn visit_enum<A>(self, visitor: A) -> Result<Self::Value, A::Error> where
+    //     A: EnumAccess<'de>,
+    // {
+    //     // TODO: Figure out how to get the name and index of the variant
+    //     Ok(Value::Sum {
+    //         name:,
+    //         index:,
+    //         value: Box::new()
+    //     })
+    // }
 }

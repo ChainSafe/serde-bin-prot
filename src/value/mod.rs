@@ -2,8 +2,8 @@
 
 use serde::Deserialize;
 
-mod visitor;
 pub mod layout;
+mod visitor;
 
 use visitor::ValueVisitor;
 
