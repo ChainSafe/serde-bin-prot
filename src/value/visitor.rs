@@ -1,6 +1,5 @@
-
-use serde::de::MapAccess;
 use crate::value::Value;
+use serde::de::MapAccess;
 use serde::de::SeqAccess;
 use serde::de::Visitor;
 use serde::Deserialize;
@@ -57,7 +56,9 @@ impl<'de> Visitor<'de> for ValueVisitor {
     where
         D: serde::Deserializer<'de>,
     {
-        Ok(Value::Option(Some(Box::new(Deserialize::deserialize(deserializer)?))))
+        Ok(Value::Option(Some(Box::new(Deserialize::deserialize(
+            deserializer,
+        )?))))
     }
 
     #[inline]
@@ -74,7 +75,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
         while let Some(elem) = visitor.next_element()? {
             vec.push(elem);
         }
-        Ok(Value::List(vec))
+        Ok(Value::Tuple(vec))
     }
 
     fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>

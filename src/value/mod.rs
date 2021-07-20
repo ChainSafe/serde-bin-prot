@@ -1,14 +1,14 @@
 //! The Value enum, a loosely typed way of representing any valid bin_prot value.
 
-use crate::value::de::ValueVisitor;
 use serde::Deserialize;
 
-mod de;
+mod visitor;
 pub mod layout;
 
+use visitor::ValueVisitor;
 // use serde::{Serialize, Deserialize};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Value {
     Unit,
     Nat0(u32),

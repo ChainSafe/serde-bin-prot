@@ -1,5 +1,5 @@
-use crate::value::layout::{BinProtRule, BinProtRuleIterator, BranchIterResult, BranchingIterator};
 use crate::error::{Error, Result};
+use crate::value::layout::{BinProtRule, BinProtRuleIterator, BranchIterResult, BranchingIterator};
 use crate::ReadBinProtExt;
 use byteorder::{LittleEndian, ReadBytesExt};
 use serde::de::{
@@ -10,7 +10,7 @@ use std::io::{BufReader, Read};
 
 pub struct Deserializer<R: Read> {
     rdr: BufReader<R>,
-    layout_iter: Option<BinProtRuleIterator>
+    layout_iter: Option<BinProtRuleIterator>,
 }
 
 impl<R: Read> Deserializer<R> {
@@ -24,7 +24,7 @@ impl<R: Read> Deserializer<R> {
     pub fn from_reader_with_layout(rdr: R, layout: BinProtRule) -> Self {
         Self {
             rdr: BufReader::new(rdr),
-            layout_iter: Some(layout.into_iter())
+            layout_iter: Some(layout.into_iter()),
         }
     }
 }
@@ -48,12 +48,10 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                 match iter.next() {
                     BranchIterResult::Item(rule) => {
                         match rule {
-                            BinProtRule::Unit => {
-                                return self.deserialize_unit(visitor)
-                            }
+                            BinProtRule::Unit => return self.deserialize_unit(visitor),
                             BinProtRule::Record(fields) => {
                                 // handled same as a seq
-                                return visitor.visit_seq(SeqAccess::new(self, fields.len()))
+                                return visitor.visit_seq(SeqAccess::new(self, fields.len()));
                             }
                             BinProtRule::Tuple(items) => {
                                 return visitor.visit_seq(SeqAccess::new(self, items.len()))
@@ -64,27 +62,25 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                                 // deserialize the enum
                                 unimplemented!()
                             }
-                            BinProtRule::Bool => {
-                                return self.deserialize_bool(visitor)
-                            }
-                            BinProtRule::Option(_) => {
-                                return self.deserialize_option(visitor)
-                            }
-                            BinProtRule::Int => {
-                                return self.deserialize_i64(visitor)
-                            }
+                            BinProtRule::Bool => return self.deserialize_bool(visitor),
+                            BinProtRule::Option(_) => return self.deserialize_option(visitor),
+                            BinProtRule::Int => return self.deserialize_i64(visitor),
                             BinProtRule::Reference(_) => {} // next
-                            _ => unimplemented!()
+                            _ => unimplemented!(),
                         }
                     }
                     BranchIterResult::Branch => {
                         iter.branch(0).expect("Invalid branch index");
                     }
                     BranchIterResult::Err(_e) => {
-                        return Err(Error::Custom{ message: "Iterator errored...".to_string() })
+                        return Err(Error::Custom {
+                            message: "Iterator errored...".to_string(),
+                        })
                     }
                     BranchIterResult::End => {
-                        return Err(Error::Custom{ message: "Unxepected end of layout".to_string() })
+                        return Err(Error::Custom {
+                            message: "Unxepected end of layout".to_string(),
+                        })
                     }
                 }
             }
