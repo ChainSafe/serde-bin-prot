@@ -18,8 +18,8 @@ macro_rules! bin_prot_test {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub(crate) struct A {
-   pub(crate) x: i64,
-   pub(crate) y: f64,
+    pub(crate) x: i64,
+    pub(crate) y: f64,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -30,7 +30,7 @@ pub(crate) struct B {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub(crate) struct BInner {
-    pub(crate)  w: i64,
+    pub(crate) w: i64,
     pub(crate) x: i64,
 }
 
@@ -45,7 +45,7 @@ pub(crate) struct CInner {}
 
 pub(crate) struct Outer {
     pub(crate) y: Inner,
-    pub(crate) z: Option<i64>
+    pub(crate) z: Option<i64>,
 }
 
 pub(crate) struct Inner {

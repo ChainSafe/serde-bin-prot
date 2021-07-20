@@ -1,7 +1,6 @@
-
 mod common;
 
-use crate::common::{A, B, BInner, Inner, Outer};
+use crate::common::{BInner, Inner, Outer, A, B};
 
 // Non-integer bin_prot size tests
 // Ported from: https://github.com/janestreet/bin_prot/blob/master/test/non_integers_repr.ml
@@ -62,7 +61,7 @@ fn test_vec() {
 fn test_float32_vec() {
     bin_prot_test! {
         .. .. .. .. 0x00 -> Vec::<f32>::new(),
-        0x3f 0x80 0x00 0x00 0x01 -> vec![1f32]    
+        0x3f 0x80 0x00 0x00 0x01 -> vec![1f32]
     }
 }
 
