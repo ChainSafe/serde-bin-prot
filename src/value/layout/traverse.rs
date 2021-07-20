@@ -146,7 +146,7 @@ mod tests {
   "bin_io_derived": true,
   "bin_prot_rule": [
     "Option",
-    [r
+    [
       "Tuple",
       [
         [

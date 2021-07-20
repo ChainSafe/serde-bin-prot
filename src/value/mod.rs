@@ -4,7 +4,7 @@ use crate::value::de::ValueVisitor;
 use serde::Deserialize;
 
 mod de;
-mod layout;
+pub mod layout;
 
 // use serde::{Serialize, Deserialize};
 
@@ -37,6 +37,9 @@ impl Default for Value {
 }
 
 // ensure the value visitor is always used when deserializing to a Value
+// This will always request deserialize_any be called since the Value implementation
+// does not describe its own structure. Attempting to deserialize into Value from a
+// non-self describing format will result in an error
 impl<'de> Deserialize<'de> for Value {
     #[inline]
     fn deserialize<D>(deserializer: D) -> Result<Value, D::Error>

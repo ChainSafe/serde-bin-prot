@@ -1,3 +1,4 @@
+use crate::value::layout::{BinProtRule, BinProtRuleIterator};
 use crate::error::{Error, Result};
 use crate::ReadBinProtExt;
 use byteorder::{LittleEndian, ReadBytesExt};
@@ -9,12 +10,21 @@ use std::io::{BufReader, Read};
 
 pub struct Deserializer<R: Read> {
     rdr: BufReader<R>,
+    layout_iter: Option<BinProtRuleIterator>
 }
 
 impl<R: Read> Deserializer<R> {
     fn from_reader(rdr: R) -> Self {
         Self {
             rdr: BufReader::new(rdr),
+            layout_iter: None,
+        }
+    }
+
+    fn from_reader_with_layout(rdr: R, layout: BinProtRule) -> Self {
+        Self {
+            rdr: BufReader::new(rdr),
+            layout_iter: Some(layout.into_iter())
         }
     }
 }
@@ -33,7 +43,12 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     {
         // can only deserialize any for a self describing protocol
         // which bin_io is not
-        Err(Error::WontImplement)
+        if let Some(iter) = &self.layout_iter {
+            
+            Err(Error::WontImplement)
+        } else {
+            Err(Error::WontImplement)
+        }
     }
 
     fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value>
