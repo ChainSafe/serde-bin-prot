@@ -67,6 +67,9 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                             BinProtRule::Bool => {
                                 return self.deserialize_bool(visitor)
                             }
+                            BinProtRule::Option(_) => {
+                                return self.deserialize_option(visitor)
+                            }
                             BinProtRule::Int => {
                                 return self.deserialize_i64(visitor)
                             }

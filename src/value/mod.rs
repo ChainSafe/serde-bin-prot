@@ -8,7 +8,7 @@ pub mod layout;
 
 // use serde::{Serialize, Deserialize};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Value {
     Unit,
     Nat0(u32),
