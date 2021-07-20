@@ -6,7 +6,6 @@ mod visitor;
 pub mod layout;
 
 use visitor::ValueVisitor;
-// use serde::{Serialize, Deserialize};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
@@ -26,8 +25,6 @@ pub enum Value {
         value: Box<Value>,
     }, // sum types/enums
     List(Vec<Value>),
-
-    Placeholder, // This is a special variant to be used when iteratively building up the type from data
 }
 
 impl Default for Value {
@@ -36,7 +33,7 @@ impl Default for Value {
     }
 }
 
-// ensure the value visitor is always used when deserializing to a Value
+// Ensure the value visitor is always used when deserializing to a Value
 // This will always request deserialize_any be called since the Value implementation
 // does not describe its own structure. Attempting to deserialize into Value from a
 // non-self describing format will result in an error
