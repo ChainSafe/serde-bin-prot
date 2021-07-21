@@ -7,6 +7,9 @@ use common::print_byte_array;
 
 const MAX_BYTES: usize = 11;
 
+// TODO: Move towards macro based test suit once array serialization is fixed.
+// See: https://github.com/ChainSafe/serde-bin-prot/issues/31
+
 const EXPECTED: &str = r#"
 .. .. .. .. .. .. .. .. .. .. 00 -> []
 .. .. .. .. .. .. .. .. .. 00 01 -> [0]

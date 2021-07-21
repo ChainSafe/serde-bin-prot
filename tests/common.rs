@@ -3,19 +3,54 @@ use serde_bin_prot::{from_reader, to_writer};
 use std::fmt::Debug;
 use std::fmt::Write;
 
-#[derive(Debug)]
-pub struct TestCase<T> {
-    pub input: T,
-    pub expected: Vec<u8>,
+/// Macro that lets one use jane street's bin prot expect test cases blocks
+/// and assert using serde-bin-prot's APIs.
+#[macro_export]
+macro_rules! bin_prot_test {
+    ($($(..) * $($expected:literal) * -> $typ:expr),*)  => {
+        $(
+        let mut output = vec![];
+        serde_bin_prot::to_writer(&mut output, &$typ).expect("Failed writing bin-prot encoded data");
+        assert_eq!(vec![$($expected,)*], output.into_iter().rev().collect::<Vec<u8>>());
+        )*
+    };
 }
 
-impl<T> TestCase<T> {
-    pub fn new(input: T, expected: Vec<u8>) -> Self {
-        TestCase {
-            input: input,
-            expected: expected,
-        }
-    }
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub(crate) struct A {
+    pub(crate) x: i64,
+    pub(crate) y: f64,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub(crate) struct B {
+    pub(crate) y: BInner,
+    pub(crate) z: Option<i64>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub(crate) struct BInner {
+    pub(crate) w: i64,
+    pub(crate) x: i64,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub(crate) struct C {
+    pub(crate) y: CInner,
+    pub(crate) z: Option<i64>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub(crate) struct CInner {}
+
+pub(crate) struct Outer {
+    pub(crate) y: Inner,
+    pub(crate) z: Option<i64>,
+}
+
+pub(crate) struct Inner {
+    pub(crate) w: i64,
+    pub(crate) x: i64,
 }
 
 /// Prints a byte array according to the style used in the Jane Street
