@@ -188,6 +188,8 @@ pub struct UnresolvedPayload {
 pub struct ResolvedPayload {
     source_type_decl: String,
     #[serde(default)]
+    source_module_path: String,
+    #[serde(default)]
     bin_io_derived: bool, // This is present only in later versions of the type layouts. Probably don't trust its value
     ref_rule: Box<BinProtRule>,
 }
