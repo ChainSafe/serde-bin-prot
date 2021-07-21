@@ -1,4 +1,5 @@
 use crate::value::Value;
+use serde::de::EnumAccess;
 use serde::de::MapAccess;
 use serde::de::SeqAccess;
 use serde::de::Visitor;
@@ -89,14 +90,16 @@ impl<'de> Visitor<'de> for ValueVisitor {
         Ok(Value::Record(values))
     }
 
-    // fn visit_enum<A>(self, visitor: A) -> Result<Self::Value, A::Error> where
-    //     A: EnumAccess<'de>,
-    // {
-    //     // TODO: Figure out how to get the name and index of the variant
-    //     Ok(Value::Sum {
-    //         name:,
-    //         index:,
-    //         value: Box::new()
-    //     })
-    // }
+    fn visit_enum<A>(self, visitor: A) -> Result<Self::Value, A::Error> where
+        A: EnumAccess<'de>,
+    {
+        let (v, _) = visitor.variant()?;
+
+        // TODO: Figure out how to get the name and index of the variant
+        Ok(Value::Sum {
+            name: "".to_string(),
+            index: v,
+            value: Box::new(Value::Unit)
+        })
+    }
 }
