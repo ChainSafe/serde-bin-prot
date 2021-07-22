@@ -38,7 +38,7 @@ const RECORD_RULE: &str = r#"
   "Record",
   [
     { "field_name": "first", "field_rule": ["Int"] },
-    { "field_name": "second", "field_rule": ["Bool"] }
+    { "field_name": "second", "field_rule": ["Record", [{ "field_name": "inner", "field_rule": ["Bool"] }] ] }
   ]
 ]
 "#;
@@ -46,14 +46,14 @@ const RECORD_RULE: &str = r#"
 #[test]
 fn test_record_rule() {
     let rule: BinProtRule = serde_json::from_str(RECORD_RULE).unwrap();
-    let example = vec![0x00, 0x01]; // Value::Record([("first", Value::Int(0)), ("second", Value::Bool(true))])
+    let example = vec![0x00, 0x01];
 
     let mut de = Deserializer::from_reader_with_layout(example.as_slice(), rule);
     let result: Value = Deserialize::deserialize(&mut de).expect("Failed to deserialize");
     println!("{:?}", result);
     assert_eq!(
         result,
-        Value::Record(vec![("first".to_string(), Value::Int(0)), ("second".to_string(), Value::Bool(true))])
+        Value::Record(vec![("first".to_string(), Value::Int(0)), ("second".to_string(), Value::Record(vec![("inner".to_string(), Value::Bool(true))]))])
     )
 }
 
