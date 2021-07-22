@@ -26,8 +26,8 @@ fn test_char() {
         0x00 -> '\u{000}',
         0x41 -> 'A',
         0x7a -> 'z',
-        0x3b -> ';'
-        // 0xff -> '\u{255}' // FIXME: https://github.com/ChainSafe/serde-bin-prot/issues/29
+        0x3b -> ';',
+        0xff -> 255u8 as char
     }
 }
 
