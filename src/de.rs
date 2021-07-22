@@ -2,8 +2,9 @@ use crate::error::{Error, Result};
 use crate::value::layout::{BinProtRule, BinProtRuleIterator, BranchingIterator};
 use crate::ReadBinProtExt;
 use byteorder::{LittleEndian, ReadBytesExt};
+use serde::de::value::StringDeserializer;
 use serde::de::{
-    self, value::U32Deserializer, DeserializeSeed, EnumAccess, IntoDeserializer, Visitor,
+    self, value::U8Deserializer, DeserializeSeed, EnumAccess, IntoDeserializer, Visitor,
 };
 use serde::Deserialize;
 use std::io::{BufReader, Read};
@@ -51,8 +52,11 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                         match rule {
                             BinProtRule::Unit => return self.deserialize_unit(visitor),
                             BinProtRule::Record(fields) => {
-                                // handled same as a seq
-                                return visitor.visit_seq(SeqAccess::new(self, fields.len()));
+                                // Grab the field names from the rule to pass to the map access
+                                return visitor.visit_map(MapAccess::new(
+                                    self,
+                                    fields.into_iter().map(|f| f.field_name).collect(),
+                                ));
                             }
                             BinProtRule::Tuple(items) => {
                                 return visitor.visit_seq(SeqAccess::new(self, items.len()))
@@ -242,7 +246,7 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
         visitor.visit_newtype_struct(self)
     }
 
-    // Parsing an unknown length seq (e.g array, lust) involves
+    // Parsing an unknown length seq (e.g array, list) involves
     // first reading the length as a Nat0 and then parsing the next values
     fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value>
     where
@@ -281,8 +285,11 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: Visitor<'de>,
     {
-        let len = self.rdr.bin_read_nat0()?;
-        visitor.visit_map(SeqAccess::new(self, len))
+        // we can't know the field names (and don't need to) if we are deserializing in
+        // stronly typed mode. To make everything work just add some dummy field names
+        let len: usize = self.rdr.bin_read_nat0()?;
+        let dummy_fields = std::iter::repeat("".to_string()).take(len).collect();
+        visitor.visit_map(MapAccess::new(self, dummy_fields))
     }
 
     // Structs look just like sequences
@@ -369,13 +376,31 @@ impl<'de: 'a, 'a, R: Read> de::SeqAccess<'de> for SeqAccess<'a, R> {
     }
 }
 
-impl<'de: 'a, 'a, R: Read> de::MapAccess<'de> for SeqAccess<'a, R> {
+struct MapAccess<'a, R: Read + 'a> {
+    de: &'a mut Deserializer<R>,
+    field_names: Vec<String>,
+    index: usize,
+}
+
+impl<'a, R: Read + 'a> MapAccess<'a, R> {
+    pub fn new(de: &'a mut Deserializer<R>, field_names: Vec<String>) -> Self {
+        Self {
+            de,
+            field_names,
+            index: 0,
+        }
+    }
+}
+
+impl<'de: 'a, 'a, R: Read> de::MapAccess<'de> for MapAccess<'a, R> {
     type Error = Error;
 
     fn next_key_seed<T: de::DeserializeSeed<'de>>(&mut self, seed: T) -> Result<Option<T::Value>> {
-        if self.len > 0 {
-            self.len -= 1;
-            seed.deserialize(&mut *self.de).map(Some)
+        if self.index < self.field_names.len() {
+            let de: StringDeserializer<Self::Error> =
+                self.field_names[self.index].clone().into_deserializer();
+            self.index += 1;
+            seed.deserialize(de).map(Some)
         } else {
             Ok(None)
         }
@@ -386,7 +411,7 @@ impl<'de: 'a, 'a, R: Read> de::MapAccess<'de> for SeqAccess<'a, R> {
     }
 
     fn size_hint(&self) -> Option<usize> {
-        Some(self.len)
+        Some(self.field_names.len())
     }
 }
 
@@ -412,7 +437,7 @@ impl<'de, 'a, R: Read> EnumAccess<'de> for Enum<'a, R> {
     where
         V: de::DeserializeSeed<'de>,
     {
-        let de: U32Deserializer<Self::Error> = (self.index as u32).into_deserializer();
+        let de: U8Deserializer<Self::Error> = (self.index as u8).into_deserializer();
         let v = seed.deserialize(de)?;
         Ok((v, self))
     }

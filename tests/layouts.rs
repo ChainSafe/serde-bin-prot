@@ -33,6 +33,30 @@ fn test_simple_rule() {
     )
 }
 
+const RECORD_RULE: &str = r#"
+[
+  "Record",
+  [
+    { "field_name": "first", "field_rule": ["Int"] },
+    { "field_name": "second", "field_rule": ["Bool"] }
+  ]
+]
+"#;
+
+#[test]
+fn test_record_rule() {
+    let rule: BinProtRule = serde_json::from_str(RECORD_RULE).unwrap();
+    let example = vec![0x00, 0x01]; // Value::Record([("first", Value::Int(0)), ("second", Value::Bool(true))])
+
+    let mut de = Deserializer::from_reader_with_layout(example.as_slice(), rule);
+    let result: Value = Deserialize::deserialize(&mut de).expect("Failed to deserialize");
+    println!("{:?}", result);
+    assert_eq!(
+        result,
+        Value::Record(vec![("first".to_string(), Value::Int(0)), ("second".to_string(), Value::Bool(true))])
+    )
+}
+
 const SUM_RULE: &str = r#"
 [
   "Sum",
@@ -51,13 +75,20 @@ const SUM_RULE: &str = r#"
 ]
 "#;
 
-#[test]
-fn test_sum_rule() {
-    let rule: BinProtRule = serde_json::from_str(SUM_RULE).unwrap();
-    let example = vec![0x00, 0x00]; // One((0))
+// #[test]
+// fn test_sum_rule() {
+//     let rule: BinProtRule = serde_json::from_str(SUM_RULE).unwrap();
+//     let example = vec![0x01, 0x00]; // Two((false))
 
-    let mut de = Deserializer::from_reader_with_layout(example.as_slice(), rule);
-    let result: Value = Deserialize::deserialize(&mut de).expect("Failed to deserialize");
-    println!("{:?}", result);
-    assert_eq!(result, Value::Sum{ name: "".to_string(), index: 0, value: Box::new(Value::Int(0)) }) // should be Value::Sum{ name: "one", index: 0, value: Box::new(Value::Int(0)) }
-}
+//     let mut de = Deserializer::from_reader_with_layout(example.as_slice(), rule);
+//     let result: Value = Deserialize::deserialize(&mut de).expect("Failed to deserialize");
+//     println!("{:?}", result);
+//     assert_eq!(
+//         result,
+//         Value::Sum {
+//             name: "two".to_string(),
+//             index: 1,
+//             value: Box::new(Value::Bool(false))
+//         }
+//     ) // should be Value::Sum{ name: "one", index: 0, value: Box::new(Value::Int(0)) }
+// }

@@ -372,8 +372,8 @@ mod tests {
             match iter.next() {
                 Ok(Some(v)) => {
                     if let BinProtRule::Sum(_) = v {
-                      // if its a sum type take the first variant in each case
-                      iter.branch(0).expect("Invalid branch index");
+                        // if its a sum type take the first variant in each case
+                        iter.branch(0).expect("Invalid branch index");
                     }
                     println!("{:?}\n", v);
                 }

@@ -1,8 +1,8 @@
 use crate::value::Value;
-use serde::de::EnumAccess;
 use serde::de::MapAccess;
 use serde::de::SeqAccess;
 use serde::de::Visitor;
+use serde::de::{EnumAccess, VariantAccess};
 use serde::Deserialize;
 
 pub struct ValueVisitor;
@@ -90,16 +90,17 @@ impl<'de> Visitor<'de> for ValueVisitor {
         Ok(Value::Record(values))
     }
 
-    fn visit_enum<A>(self, visitor: A) -> Result<Self::Value, A::Error> where
+    fn visit_enum<A>(self, data: A) -> Result<Self::Value, A::Error>
+    where
         A: EnumAccess<'de>,
     {
-        let (v, _variant_visitor) = visitor.variant()?;
+        let (index, variant_access) = data.variant::<u8>()?;
 
         // TODO: Figure out how to get the name, index and value of the variant
         Ok(Value::Sum {
             name: "".to_string(),
-            index: v,
-            value: Box::new(Value::Unit)
+            index,
+            value: Box::new(variant_access.newtype_variant()?),
         })
     }
 }

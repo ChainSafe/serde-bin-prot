@@ -21,7 +21,7 @@ pub enum Value {
     Tuple(Vec<Value>),
     Sum {
         name: String,
-        index: usize,
+        index: u8,
         value: Box<Value>,
     }, // sum types/enums
     List(Vec<Value>),
