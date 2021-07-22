@@ -9,7 +9,7 @@ use serde_json::from_value;
 mod list_tagged_enum;
 mod traverse;
 
-pub use traverse::{BinProtRuleIterator, BranchIterResult, BranchingIterator};
+pub use traverse::{BinProtRuleIterator, BranchingIterator};
 
 use list_tagged_enum::ListTaggedEnum;
 
@@ -124,14 +124,14 @@ impl TryFrom<ListTaggedEnum> for BinProtRule {
 
 #[derive(Clone, Deserialize, Debug)]
 pub struct RecordField {
-    field_name: String,
-    field_rule: BinProtRule,
+    pub field_name: String,
+    pub field_rule: BinProtRule,
 }
 
 #[derive(Clone, Deserialize, Debug)]
 pub struct Summand {
-    ctor_name: String,
-    index: i32,
+    pub ctor_name: String,
+    pub index: i32,
     ctor_args: Vec<BinProtRule>,
 }
 

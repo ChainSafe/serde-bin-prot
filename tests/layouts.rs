@@ -54,7 +54,6 @@ const SUM_RULE: &str = r#"
 #[test]
 fn test_sum_rule() {
     let rule: BinProtRule = serde_json::from_str(SUM_RULE).unwrap();
-    println!("{:?}", rule);
     let example = vec![0x00, 0x00]; // One((0))
 
     let mut de = Deserializer::from_reader_with_layout(example.as_slice(), rule);

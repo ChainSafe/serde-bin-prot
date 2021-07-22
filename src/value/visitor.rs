@@ -93,9 +93,9 @@ impl<'de> Visitor<'de> for ValueVisitor {
     fn visit_enum<A>(self, visitor: A) -> Result<Self::Value, A::Error> where
         A: EnumAccess<'de>,
     {
-        let (v, _) = visitor.variant()?;
+        let (v, _variant_visitor) = visitor.variant()?;
 
-        // TODO: Figure out how to get the name and index of the variant
+        // TODO: Figure out how to get the name, index and value of the variant
         Ok(Value::Sum {
             name: "".to_string(),
             index: v,

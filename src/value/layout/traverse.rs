@@ -32,24 +32,17 @@ pub struct BinProtRuleIterator {
 pub trait BranchingIterator {
     type Item;
     type Error;
-    fn next(&mut self) -> BranchIterResult<Self::Item, Self::Error>;
+    fn next(&mut self) -> Result<Option<Self::Item>, Self::Error>;
     fn branch(&mut self, branch: usize) -> Result<(), Self::Error>;
-}
-
-pub enum BranchIterResult<T, E> {
-    Item(T),
-    Err(E),
-    Branch,
-    End,
 }
 
 impl BranchingIterator for BinProtRuleIterator {
     type Item = BinProtRule;
     type Error = String;
 
-    fn next(&mut self) -> BranchIterResult<Self::Item, Self::Error> {
+    fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
         if self.branch.is_some() {
-            return BranchIterResult::Err("Must call branch to proceed".to_string());
+            return Err("Must call branch to proceed".to_string());
         }
 
         let top = self.stack.pop();
@@ -71,7 +64,6 @@ impl BranchingIterator for BinProtRuleIterator {
                         // don't add to the stack. Add to the branch field instead
                         // this must be resolved by calling `branch` before the iterator can continue
                         self.branch = Some(summands.to_vec());
-                        return BranchIterResult::Branch;
                     }
                     BinProtRule::Reference(rule_ref) => match rule_ref {
                         RuleRef::Unresolved(_payload) => {
@@ -93,9 +85,9 @@ impl BranchingIterator for BinProtRuleIterator {
                     | BinProtRule::Float => {} // These are leaves so nothing required
                     r => panic!("unimplemented: {:?}", r),
                 };
-                BranchIterResult::Item(r.unwrap())
+                Ok(r)
             }
-            None => BranchIterResult::End, // end of traversal
+            None => Ok(None), // end of traversal
         }
     }
 
@@ -254,7 +246,7 @@ mod tests {
     fn test_layout() {
         let layout: Layout = serde_json::from_str(TEST_LAYOUT).unwrap();
         let mut iter = layout.bin_prot_rule.into_branching_iter();
-        while let BranchIterResult::Item(v) = iter.next() {
+        while let Ok(Some(v)) = iter.next() {
             println!("{:?}\n", v);
         }
     }
@@ -378,16 +370,17 @@ mod tests {
         // if no error
         loop {
             match iter.next() {
-                BranchIterResult::Item(v) => {
+                Ok(Some(v)) => {
+                    if let BinProtRule::Sum(_) = v {
+                      // if its a sum type take the first variant in each case
+                      iter.branch(0).expect("Invalid branch index");
+                    }
                     println!("{:?}\n", v);
                 }
-                BranchIterResult::Branch => {
-                    iter.branch(0).expect("Invalid branch index");
-                }
-                BranchIterResult::Err(e) => {
+                Err(e) => {
                     panic!("{}", e);
                 }
-                BranchIterResult::End => {
+                Ok(None) => {
                     println!("END!!!!");
                     break;
                 }

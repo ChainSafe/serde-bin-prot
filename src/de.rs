@@ -1,5 +1,5 @@
 use crate::error::{Error, Result};
-use crate::value::layout::{BinProtRule, BinProtRuleIterator, BranchIterResult, BranchingIterator};
+use crate::value::layout::{BinProtRule, BinProtRuleIterator, BranchingIterator};
 use crate::ReadBinProtExt;
 use byteorder::{LittleEndian, ReadBytesExt};
 use serde::de::{
@@ -46,7 +46,8 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
         if let Some(iter) = &mut self.layout_iter {
             loop {
                 match iter.next() {
-                    BranchIterResult::Item(rule) => {
+                    Ok(Some(rule)) => {
+                        println!("{:?}", rule);
                         match rule {
                             BinProtRule::Unit => return self.deserialize_unit(visitor),
                             BinProtRule::Record(fields) => {
@@ -56,11 +57,12 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                             BinProtRule::Tuple(items) => {
                                 return visitor.visit_seq(SeqAccess::new(self, items.len()))
                             }
-                            BinProtRule::Sum(_) => {
+                            BinProtRule::Sum(summands) => {
                                 // read the enum variant index. We need it to
                                 let index = self.rdr.bin_read_variant_index()?;
+                                let name = summands[index as usize].ctor_name.clone();
                                 iter.branch(index.into()).expect("invalid branch index");
-                                return visitor.visit_enum(Enum::new(self, index));
+                                return visitor.visit_enum(Enum::new(self, index, name));
                             }
                             BinProtRule::Bool => return self.deserialize_bool(visitor),
                             BinProtRule::Option(_) => return self.deserialize_option(visitor),
@@ -69,15 +71,12 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                             _ => unimplemented!(),
                         }
                     }
-                    BranchIterResult::Branch => {
-                        iter.branch(0).expect("Invalid branch index");
-                    }
-                    BranchIterResult::Err(_e) => {
+                    Err(_e) => {
                         return Err(Error::Custom {
                             message: "Iterator errored...".to_string(),
                         })
                     }
-                    BranchIterResult::End => {
+                    Ok(None) => {
                         return Err(Error::Custom {
                             message: "Unxepected end of layout".to_string(),
                         })
@@ -309,7 +308,7 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
         V: Visitor<'de>,
     {
         let index = self.rdr.bin_read_variant_index()?;
-        visitor.visit_enum(Enum::new(self, index))
+        visitor.visit_enum(Enum::new(self, index, String::new()))
     }
 
     fn deserialize_identifier<V>(self, _visitor: V) -> Result<V::Value>
@@ -394,11 +393,12 @@ impl<'de: 'a, 'a, R: Read> de::MapAccess<'de> for SeqAccess<'a, R> {
 struct Enum<'a, R: Read> {
     de: &'a mut Deserializer<R>,
     index: u8,
+    name: String,
 }
 
 impl<'a, 'de, R: Read> Enum<'a, R> {
-    fn new(de: &'a mut Deserializer<R>, index: u8) -> Self {
-        Enum { de, index }
+    fn new(de: &'a mut Deserializer<R>, index: u8, name: String) -> Self {
+        Enum { de, index, name }
     }
 }
 
@@ -413,7 +413,7 @@ impl<'de, 'a, R: Read> EnumAccess<'de> for Enum<'a, R> {
         V: de::DeserializeSeed<'de>,
     {
         let de: U32Deserializer<Self::Error> = (self.index as u32).into_deserializer();
-        let v = DeserializeSeed::deserialize(seed, de)?;
+        let v = seed.deserialize(de)?;
         Ok((v, self))
     }
 }
