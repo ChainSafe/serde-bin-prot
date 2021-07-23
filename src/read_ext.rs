@@ -30,10 +30,7 @@ pub trait ReadBinProtExt: io::Read {
         }
     }
 
-    // This function individual bytes from the reader and appends them to a buffer
-    // With each new byte it attempts to convert the buffer to a utf-8 char and
-    // failing this will continue until the max number of bytes for a char
-    // is encountered
+    // This function reads a single byte as char
     fn bin_read_char(&mut self) -> Result<char> {
         Ok(self.read_u8()? as char)
     }

@@ -17,9 +17,8 @@ pub trait WriteBinProtExt: io::Write {
     }
 
     // chars are 1 byte long
-    fn bin_write_char(&mut self, c: char) -> Result<usize, io::Error> {
-        self.write_u8(c as u8)?;
-        Ok(1)
+    fn bin_write_char(&mut self, c: char) -> Result<(), io::Error> {
+        self.write_u8(c as u8)
     }
 
     fn bin_write_integer<T: Into<i64>>(&mut self, n: T) -> Result<usize, io::Error> {
