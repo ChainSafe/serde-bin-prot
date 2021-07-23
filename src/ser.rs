@@ -128,7 +128,10 @@ where
 
     // Chars are ascii encoded and should be 1 byte
     fn serialize_char(self, v: char) -> Result<()> {
-        self.writer.bin_write_char(v).map_err(Into::into)
+        self.writer
+            .bin_write_char(v)
+            .map(|_| ())
+            .map_err(Into::into)
     }
 
     // First the length of the string is written as a Nat0 (in characters?)
