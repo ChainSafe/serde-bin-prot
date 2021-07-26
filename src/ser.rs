@@ -126,10 +126,12 @@ where
         Ok(())
     }
 
-    // Chars are UTF-8 encoded and may be between 1 and 4 bytes
+    // Chars are ascii encoded and should be 1 byte
     fn serialize_char(self, v: char) -> Result<()> {
-        self.writer.bin_write_char(v)?;
-        Ok(())
+        self.writer
+            .bin_write_char(v)
+            .map(|_| ())
+            .map_err(Into::into)
     }
 
     // First the length of the string is written as a Nat0 (in characters?)

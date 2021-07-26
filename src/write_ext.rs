@@ -16,15 +16,10 @@ pub trait WriteBinProtExt: io::Write {
         self.write_u8(if b { 0x01 } else { 0x00 })
     }
 
-    // chars are utf-8 so can be 1-4 bytes long
+    // chars are 1 byte long
     fn bin_write_char(&mut self, c: char) -> Result<usize, io::Error> {
-        let mut buffer = [0_u8; 4]; // can fit any char
-        let len = c.len_utf8();
-        c.encode_utf8(&mut buffer);
-        for c in buffer.iter().take(len) {
-            self.write_u8(*c)?;
-        }
-        Ok(len)
+        self.write_u8(c as u8)?;
+        Ok(1)
     }
 
     fn bin_write_integer<T: Into<i64>>(&mut self, n: T) -> Result<usize, io::Error> {

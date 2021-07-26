@@ -30,23 +30,9 @@ pub trait ReadBinProtExt: io::Read {
         }
     }
 
-    // This function individual bytes from the reader and appends them to a buffer
-    // With each new byte it attempts to convert the buffer to a utf-8 char and
-    // failing this will continue until the max number of bytes for a char
-    // is encountered
+    // This function reads a single byte as char
     fn bin_read_char(&mut self) -> Result<char> {
-        let mut buf = [0; 4];
-        for i in 0..4 {
-            buf[i] = self.read_u8()?;
-            if let Ok(s) = core::str::from_utf8(&buf[..=i]) {
-                // can unwrap here as if from_utf8 returned Ok
-                // then there is at least one char in the string
-                return Ok(s.chars().next().unwrap());
-            }
-        }
-        Err(Error::InvalidUtf8 {
-            bytes: buf.to_vec(),
-        })
+        Ok(self.read_u8()? as char)
     }
 
     fn bin_read_integer<T: FromPrimitive>(&mut self) -> Result<T> {
