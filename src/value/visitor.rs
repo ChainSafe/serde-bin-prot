@@ -1,3 +1,4 @@
+use crate::de::EnumData;
 use crate::value::Value;
 use serde::de::MapAccess;
 use serde::de::SeqAccess;
@@ -94,13 +95,15 @@ impl<'de> Visitor<'de> for ValueVisitor {
     where
         A: EnumAccess<'de>,
     {
-        let (index, variant_access) = data.variant::<u8>()?;
+        let (payload, variant_access) = data.variant::<EnumData>()?;
 
-        // TODO: Figure out how to get the name, index and value of the variant
+        // payload must encode the index, name and enum type in a deserializer
+        // the variant access can be used to retrieve the correct content based on this
+
         Ok(Value::Sum {
-            name: "".to_string(),
-            index,
-            value: Box::new(variant_access.newtype_variant()?),
+            name: payload.name,
+            index: payload.index,
+            value: vec![variant_access.newtype_variant()?],
         })
     }
 }

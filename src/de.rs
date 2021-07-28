@@ -1,12 +1,14 @@
 use crate::error::{Error, Result};
+use crate::value::layout::Summand;
 use crate::value::layout::{BinProtRule, BinProtRuleIterator, BranchingIterator};
 use crate::ReadBinProtExt;
 use byteorder::{LittleEndian, ReadBytesExt};
-use serde::de::value::StringDeserializer;
+
 use serde::de::{
-    self, value::U8Deserializer, DeserializeSeed, EnumAccess, IntoDeserializer, Visitor,
+    self, value::U8Deserializer, EnumAccess, IntoDeserializer, Visitor,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use std::convert::TryInto;
 use std::io::{BufReader, Read};
 
 pub struct Deserializer<R: Read> {
@@ -55,7 +57,7 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                                 // Grab the field names from the rule to pass to the map access
                                 return visitor.visit_map(MapAccess::new(
                                     self,
-                                    fields.into_iter().map(|f| f.field_name).collect(),
+                                    fields.into_iter().map(|f| f.field_name).rev().collect(),
                                 ));
                             }
                             BinProtRule::Tuple(items) => {
@@ -64,9 +66,11 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                             BinProtRule::Sum(summands) => {
                                 // read the enum variant index. We need it to
                                 let index = self.rdr.bin_read_variant_index()?;
-                                let name = summands[index as usize].ctor_name.clone();
                                 iter.branch(index.into()).expect("invalid branch index");
-                                return visitor.visit_enum(Enum::new(self, index, name));
+                                return visitor.visit_enum(ValueEnum::new(
+                                    self,
+                                    summands[index as usize].clone(),
+                                ));
                             }
                             BinProtRule::Bool => return self.deserialize_bool(visitor),
                             BinProtRule::Option(_) => return self.deserialize_option(visitor),
@@ -315,7 +319,7 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
         V: Visitor<'de>,
     {
         let index = self.rdr.bin_read_variant_index()?;
-        visitor.visit_enum(Enum::new(self, index, String::new()))
+        visitor.visit_enum(Enum::new(self, index))
     }
 
     fn deserialize_identifier<V>(self, _visitor: V) -> Result<V::Value>
@@ -378,17 +382,12 @@ impl<'de: 'a, 'a, R: Read> de::SeqAccess<'de> for SeqAccess<'a, R> {
 
 struct MapAccess<'a, R: Read + 'a> {
     de: &'a mut Deserializer<R>,
-    field_names: Vec<String>,
-    index: usize,
+    field_names: Vec<String>, // field names should be stored as a stack (first element last)
 }
 
 impl<'a, R: Read + 'a> MapAccess<'a, R> {
     pub fn new(de: &'a mut Deserializer<R>, field_names: Vec<String>) -> Self {
-        Self {
-            de,
-            field_names,
-            index: 0,
-        }
+        Self { de, field_names }
     }
 }
 
@@ -396,11 +395,10 @@ impl<'de: 'a, 'a, R: Read> de::MapAccess<'de> for MapAccess<'a, R> {
     type Error = Error;
 
     fn next_key_seed<T: de::DeserializeSeed<'de>>(&mut self, seed: T) -> Result<Option<T::Value>> {
-        if self.index < self.field_names.len() {
-            let de: StringDeserializer<Self::Error> =
-                self.field_names[self.index].clone().into_deserializer();
-            self.index += 1;
-            seed.deserialize(de).map(Some)
+        if let Some(name) = self.field_names.pop() {
+            // create a new deserializer to read the name from memory
+            // as it isn't present in the serialized output
+            seed.deserialize(name.into_deserializer()).map(Some)
         } else {
             Ok(None)
         }
@@ -418,12 +416,11 @@ impl<'de: 'a, 'a, R: Read> de::MapAccess<'de> for MapAccess<'a, R> {
 struct Enum<'a, R: Read> {
     de: &'a mut Deserializer<R>,
     index: u8,
-    name: String,
 }
 
 impl<'a, 'de, R: Read> Enum<'a, R> {
-    fn new(de: &'a mut Deserializer<R>, index: u8, name: String) -> Self {
-        Enum { de, index, name }
+    fn new(de: &'a mut Deserializer<R>, index: u8) -> Self {
+        Enum { de, index }
     }
 }
 
@@ -471,5 +468,48 @@ impl<'de, 'a, R: Read> de::VariantAccess<'de> for Enum<'a, R> {
         V: Visitor<'de>,
     {
         de::Deserializer::deserialize_struct(self.de, "", fields, visitor)
+    }
+}
+
+// for accessing enums when using the loosely typed method
+// to deserialize into a Value
+struct ValueEnum<'a, R: Read> {
+    de: &'a mut Deserializer<R>,
+    variant: Summand,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct EnumData {
+    pub index: u8,
+    pub name: String,
+}
+
+impl<'a, 'de, R: Read> ValueEnum<'a, R> {
+    fn new(de: &'a mut Deserializer<R>, variant: Summand) -> Self {
+        Self { de, variant }
+    }
+}
+
+impl<'de, 'a, R: Read> EnumAccess<'de> for ValueEnum<'a, R> {
+    type Error = Error;
+    type Variant = Enum<'a, R>;
+
+    fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self::Variant)>
+    where
+        V: de::DeserializeSeed<'de>,
+    {
+        // encode the index, name and enum type into de
+        let index = self.variant.index;
+
+        let enum_data = EnumData {
+            index: index.try_into().unwrap(),
+            name: self.variant.ctor_name,
+        };
+
+        let mut buf = Vec::<u8>::new();
+        crate::to_writer(&mut buf, &enum_data).unwrap();
+        let mut de = Deserializer::from_reader(buf.as_slice());
+        let v = seed.deserialize(&mut de)?;
+        Ok((v, Enum::new(self.de, index.try_into().unwrap())))
     }
 }

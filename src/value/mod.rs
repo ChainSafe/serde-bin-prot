@@ -22,7 +22,7 @@ pub enum Value {
     Sum {
         name: String,
         index: u8,
-        value: Box<Value>,
+        value: Vec<Value>,
     }, // sum types/enums
     List(Vec<Value>),
 }

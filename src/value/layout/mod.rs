@@ -132,7 +132,7 @@ pub struct RecordField {
 pub struct Summand {
     pub ctor_name: String,
     pub index: i32,
-    ctor_args: Vec<BinProtRule>,
+    pub ctor_args: Vec<BinProtRule>,
 }
 
 #[derive(Clone, Deserialize, Debug)]
