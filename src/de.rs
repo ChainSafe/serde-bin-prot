@@ -498,18 +498,22 @@ impl<'de, 'a, R: Read> EnumAccess<'de> for ValueEnum<'a, R> {
     where
         V: de::DeserializeSeed<'de>,
     {
-        // encode the index, name and enum type into de
         let index = self.variant.index;
 
+        // bit of a hack here. visit_enum in the visitor is expecting to be able to 
+        // deserialize the enum details (e.g. variant index and name) from the stream.
+        // Since in this case it comes from the layout file we need to serialize this data
+        // and then return the deserializer to be handled by visit_enum
+        
         let enum_data = EnumData {
             index: index.try_into().unwrap(),
             name: self.variant.ctor_name,
         };
-
         let mut buf = Vec::<u8>::new();
         crate::to_writer(&mut buf, &enum_data).unwrap();
         let mut de = Deserializer::from_reader(buf.as_slice());
         let v = seed.deserialize(&mut de)?;
+
         Ok((v, Enum::new(self.de, index.try_into().unwrap())))
     }
 }

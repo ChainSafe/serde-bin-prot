@@ -103,7 +103,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
         Ok(Value::Sum {
             name: payload.name,
             index: payload.index,
-            value: vec![variant_access.newtype_variant()?],
+            value: Box::new(variant_access.newtype_variant()?),
         })
     }
 }

@@ -93,7 +93,7 @@ fn test_sum_rule() {
         Value::Sum {
             name: "two".to_string(),
             index: 1,
-            value: vec![Value::Bool(false)]
+            value: Box::new(Value::Bool(false))
         }
     )
 }
@@ -106,7 +106,13 @@ const NESTED_SUM_RULE: &str = r#"
     {
       "ctor_name": "one",
       "index": 0,
-      "ctor_args": [["Int"], ["Bool"]]
+      "ctor_args": [[
+        "Record",
+          [
+            { "field_name": "first", "field_rule": ["Int"] }
+          ]
+        ]
+       ]
     }
   ]
 ]
@@ -115,7 +121,7 @@ const NESTED_SUM_RULE: &str = r#"
 #[test]
 fn test_nested_sum_rule() {
     let rule: BinProtRule = serde_json::from_str(NESTED_SUM_RULE).unwrap();
-    let example = vec![0x00, 0x05, 0x01]; // One((5, true))
+    let example = vec![0x00, 0x05]; // One({ first: 5 })
 
     let mut de = Deserializer::from_reader_with_layout(example.as_slice(), rule);
     let result: Value = Deserialize::deserialize(&mut de).expect("Failed to deserialize");
@@ -124,7 +130,7 @@ fn test_nested_sum_rule() {
         Value::Sum {
             name: "one".to_string(),
             index: 0,
-            value: vec![Value::Int(5), Value::Bool(true)]
+            value: Box::new(Value::Record(vec![("first".to_string(), Value::Int(5))]))
         }
     )
 }
