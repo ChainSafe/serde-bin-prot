@@ -4,9 +4,7 @@ use crate::value::layout::{BinProtRule, BinProtRuleIterator, BranchingIterator};
 use crate::ReadBinProtExt;
 use byteorder::{LittleEndian, ReadBytesExt};
 
-use serde::de::{
-    self, value::U8Deserializer, EnumAccess, IntoDeserializer, Visitor,
-};
+use serde::de::{self, value::U8Deserializer, EnumAccess, IntoDeserializer, Visitor};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::io::{BufReader, Read};
@@ -50,7 +48,6 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
             loop {
                 match iter.next() {
                     Ok(Some(rule)) => {
-                        println!("{:?}", rule);
                         match rule {
                             BinProtRule::Unit => return self.deserialize_unit(visitor),
                             BinProtRule::Record(fields) => {
@@ -74,9 +71,25 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                             }
                             BinProtRule::Bool => return self.deserialize_bool(visitor),
                             BinProtRule::Option(_) => return self.deserialize_option(visitor),
-                            BinProtRule::Int => return self.deserialize_i64(visitor),
                             BinProtRule::Reference(_) => {} // next
-                            _ => unimplemented!(),
+                            BinProtRule::String => return self.deserialize_string(visitor),
+                            BinProtRule::Nat0 => return self.deserialize_u32(visitor),
+                            BinProtRule::Float => return self.deserialize_f64(visitor),
+                            BinProtRule::Char => return self.deserialize_char(visitor),
+                            BinProtRule::Int
+                            | BinProtRule::Int32
+                            | BinProtRule::Int64
+                            | BinProtRule::NativeInt => return self.deserialize_i64(visitor),
+                            BinProtRule::Polyvar(_)
+                            | BinProtRule::Hashtable(_)
+                            | BinProtRule::List(_)
+                            | BinProtRule::TypeVar(_)
+                            | BinProtRule::Bigstring
+                            | BinProtRule::Vec
+                            | BinProtRule::SelfReference(_)
+                            | BinProtRule::TypeClosure(_, _)
+                            | BinProtRule::TypeAbstraction(_, _) => { unimplemented!() }, // Don't know how to implement these yet
+                            BinProtRule::Custom => { unimplemented!() } // need to figure out the custom deserialization to apply here
                         }
                     }
                     Err(_e) => {
@@ -500,11 +513,11 @@ impl<'de, 'a, R: Read> EnumAccess<'de> for ValueEnum<'a, R> {
     {
         let index = self.variant.index;
 
-        // bit of a hack here. visit_enum in the visitor is expecting to be able to 
+        // bit of a hack here. visit_enum in the visitor is expecting to be able to
         // deserialize the enum details (e.g. variant index and name) from the stream.
         // Since in this case it comes from the layout file we need to serialize this data
         // and then return the deserializer to be handled by visit_enum
-        
+
         let enum_data = EnumData {
             index: index.try_into().unwrap(),
             name: self.variant.ctor_name,

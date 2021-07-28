@@ -97,7 +97,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
     {
         let (payload, variant_access) = data.variant::<EnumData>()?;
 
-        // payload must encode the index, name and enum type in a deserializer
+        // payload must encode the index and name in a deserializer
         // the variant access can be used to retrieve the correct content based on this
 
         Ok(Value::Sum {

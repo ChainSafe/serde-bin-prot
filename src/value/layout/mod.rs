@@ -56,6 +56,7 @@ pub enum BinProtRule {
     TypeAbstraction(Vec<String>, Box<BinProtRule>),
     // //  recursive parameterized type with bindings *),
     TypeClosure(Vec<(String, BinProtRule)>, Box<BinProtRule>),
+    Custom,
 }
 
 // required due to the strange enum encoding used by yojson (see list_tagged_enum.rs)
@@ -76,6 +77,7 @@ impl TryFrom<ListTaggedEnum> for BinProtRule {
                 "Float" => Ok(BinProtRule::Float),
                 "Vec" => Ok(BinProtRule::Vec),
                 "Bigstring" => Ok(BinProtRule::Bigstring),
+                "Custom" => Ok(BinProtRule::Custom),
                 _ => Err(format!("Unexpected enum tag: {}", t)),
             },
             ListTaggedEnum::One((t, v)) => match t.as_str() {
