@@ -24,6 +24,7 @@ pub struct BinProtRuleIterator {
     // Tree nodes can branch (only one child should be followed) rather than require traversal of all children
     // If that is the case the parent should add the children to the branch field and the next path will be taken from here rather than the stack
     branch: Option<Vec<Summand>>,
+    current_module_path: Option<String>, // holds on to most recent path encountered in traverse
 }
 
 /// An iterator where the next item may require specifying a branch to take
@@ -71,6 +72,7 @@ impl BranchingIterator for BinProtRuleIterator {
                         }
                         RuleRef::Resolved(payload) => {
                             self.stack.push(*payload.ref_rule);
+                            self.current_module_path = Some(payload.source_module_path);
                         }
                     },
                     BinProtRule::String
@@ -83,6 +85,11 @@ impl BranchingIterator for BinProtRuleIterator {
                     | BinProtRule::Int32
                     | BinProtRule::NativeInt
                     | BinProtRule::Float => {} // These are leaves so nothing required
+                    BinProtRule::Custom => {
+                        if let Some(path) = &self.current_module_path {
+                            return Ok(Some(BinProtRule::CustomForPath(path.to_string())));
+                        }
+                    }
                     r => panic!("unimplemented: {:?}", r),
                 };
                 Ok(r)
@@ -120,6 +127,7 @@ impl BinProtRule {
         BinProtRuleIterator {
             stack: vec![self],
             branch: None,
+            current_module_path: None,
         }
     }
 }

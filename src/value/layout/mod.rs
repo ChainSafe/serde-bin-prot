@@ -57,6 +57,7 @@ pub enum BinProtRule {
     // //  recursive parameterized type with bindings *),
     TypeClosure(Vec<(String, BinProtRule)>, Box<BinProtRule>),
     Custom,
+    CustomForPath(String), // does not occur in source files, used in traverse
 }
 
 // required due to the strange enum encoding used by yojson (see list_tagged_enum.rs)

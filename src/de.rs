@@ -88,8 +88,23 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                             | BinProtRule::Vec
                             | BinProtRule::SelfReference(_)
                             | BinProtRule::TypeClosure(_, _)
-                            | BinProtRule::TypeAbstraction(_, _) => { unimplemented!() }, // Don't know how to implement these yet
-                            BinProtRule::Custom => { unimplemented!() } // need to figure out the custom deserialization to apply here
+                            | BinProtRule::TypeAbstraction(_, _) => {
+                                unimplemented!()
+                            } // Don't know how to implement these yet
+                            BinProtRule::Custom => {
+                                // the traverse function should never produce this
+                                return Err(Error::Custom {
+                                    message: "Cannot deserialize custom without providing context"
+                                        .to_string(),
+                                })
+                            }
+                            BinProtRule::CustomForPath(path) => {
+                                // here is where custom deser methods can be looked up by path
+                                return Err(Error::Custom {
+                                    message: format!("No custom deserialization strategy provided for {}", path)
+                                        .to_string(),
+                                })
+                            }
                         }
                     }
                     Err(_e) => {
