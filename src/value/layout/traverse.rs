@@ -15,7 +15,7 @@
 //! Combined this should allow parsing of types defined by the layout into loosely typed representations.
 //!
 
-use crate::value::layout::{BinProtRule, RuleRef, Summand};
+use crate::value::layout::{BinProtRule, RuleRef, Polyvar};
 
 /// Implements a depth first search of the type tree
 /// defined by a BinProtRule
@@ -66,10 +66,13 @@ impl BranchingIterator for BinProtRuleIterator {
                         // this must be resolved by calling `branch` before the iterator can continue
                         self.branch = Some(summands.into_iter().map(|s| s.ctor_args ).collect());
                     }
-                    // BinProtRule::Polyvar(polyvars) => {
-                    //   // these are pretty much anonymous enum/sum types and should be handled the same way
-                    //   self.branch = Some(polyvars.to_vec());
-                    // }
+                    BinProtRule::Polyvar(polyvars) => {
+                      // these are pretty much anonymous enum/sum types and should be handled the same way
+                      self.branch = Some(polyvars.into_iter().map(|s| match s {
+                        Polyvar::Tagged(pv) => { pv.polyvar_args },
+                        Polyvar::Inherited(rule) => { vec![rule] },
+                      } ).collect());
+                    }
                     BinProtRule::Reference(rule_ref) => match rule_ref {
                         RuleRef::Unresolved(_payload) => {
                             unimplemented!();
