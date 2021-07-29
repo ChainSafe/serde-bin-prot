@@ -1,8 +1,8 @@
 //! Error objects and codes
 
-use std::fmt;
+use core::fmt;
 use std::io;
-use std::result;
+use core::result;
 
 use serde::{de, ser};
 use thiserror::Error;
