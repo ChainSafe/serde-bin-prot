@@ -23,7 +23,7 @@ pub struct BinProtRuleIterator {
     stack: Vec<BinProtRule>, // regular stack to implement the DFS
     // Tree nodes can branch (only one child should be followed) rather than require traversal of all children
     // If that is the case the parent should add the children to the branch field and the next path will be taken from here rather than the stack
-    branch: Option<Vec<Summand>>,
+    branch: Option<Vec<Vec<BinProtRule>>>,
     current_module_path: Option<String>, // holds on to most recent path encountered in traverse
 }
 
@@ -64,8 +64,12 @@ impl BranchingIterator for BinProtRuleIterator {
                     BinProtRule::Sum(summands) => {
                         // don't add to the stack. Add to the branch field instead
                         // this must be resolved by calling `branch` before the iterator can continue
-                        self.branch = Some(summands.to_vec());
+                        self.branch = Some(summands.into_iter().map(|s| s.ctor_args ).collect());
                     }
+                    // BinProtRule::Polyvar(polyvars) => {
+                    //   // these are pretty much anonymous enum/sum types and should be handled the same way
+                    //   self.branch = Some(polyvars.to_vec());
+                    // }
                     BinProtRule::Reference(rule_ref) => match rule_ref {
                         RuleRef::Unresolved(_payload) => {
                             unimplemented!();
@@ -108,12 +112,11 @@ impl BranchingIterator for BinProtRuleIterator {
             }
         }
 
-        if let Some(mut summands) = self.branch.take() {
-            // check this is the right way around...
-            let s = summands
+        if let Some(mut branches) = self.branch.take() {
+            let s = branches
                 .get_mut(branch)
                 .ok_or_else(|| "Invalid branch".to_string())?;
-            self.stack.extend(s.ctor_args.drain(0..));
+            self.stack.extend(s.drain(0..));
             Ok(())
         } else {
             Err("Cannot branch at this location in the tree".to_string())
@@ -396,3 +399,4 @@ mod tests {
         }
     }
 }
+
