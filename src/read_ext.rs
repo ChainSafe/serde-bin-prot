@@ -3,6 +3,9 @@ use crate::error::{Error, Result};
 use byteorder::{LittleEndian, ReadBytesExt};
 use num::{FromPrimitive, Unsigned};
 use ark_std::io;
+use ark_std::string::String;
+
+use ark_std::vec;
 
 // Extension trait for readers implementing io::Read to allow them to read a bin_prot encoded
 // integer
@@ -105,7 +108,7 @@ pub trait ReadBinProtExt: io::Read {
         let len = self.bin_read_nat0::<u64>()? as usize;
         let mut buf = vec![0u8; len as usize];
         self.read_exact(&mut buf)?;
-        let s = std::str::from_utf8(&buf)
+        let s = core::str::from_utf8(&buf)
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
         Ok(s.to_string())
     }
