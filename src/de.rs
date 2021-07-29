@@ -5,7 +5,7 @@ use serde::de::{
     self, value::U32Deserializer, DeserializeSeed, EnumAccess, IntoDeserializer, Visitor,
 };
 use serde::Deserialize;
-use std::io::{BufReader, Read};
+use ark_std::io::{BufReader, Read};
 
 pub struct Deserializer<R: Read> {
     rdr: BufReader<R>,

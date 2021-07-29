@@ -1,7 +1,7 @@
 //! Error objects and codes
 
 use core::fmt;
-use std::io;
+use ark_std::io;
 use core::result;
 
 use serde::{de, ser};

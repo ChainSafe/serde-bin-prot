@@ -1,6 +1,7 @@
 use core::marker::PhantomData;
 use num::FromPrimitive;
-use std::io::Cursor;
+use ark_std::io::Cursor;
+use ark_std::vec::Vec;
 
 use crate::{ReadBinProtExt, WriteBinProtExt};
 use serde::de::{self, Deserializer, Visitor};
@@ -30,7 +31,7 @@ where
 {
     type Value = T;
 
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
         formatter.write_str("A bin_prot encoded integer (1, 3, 5, or 9 bytes depending on size)")
     }
 

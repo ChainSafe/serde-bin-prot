@@ -2,7 +2,7 @@ use crate::consts::*;
 use crate::error::{Error, Result};
 use byteorder::{LittleEndian, ReadBytesExt};
 use num::{FromPrimitive, Unsigned};
-use std::io;
+use ark_std::io;
 
 // Extension trait for readers implementing io::Read to allow them to read a bin_prot encoded
 // integer

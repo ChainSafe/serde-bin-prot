@@ -1,3 +1,5 @@
+#![no_std]
+
 mod consts;
 mod de;
 pub mod error;

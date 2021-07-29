@@ -8,6 +8,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+ark-std = "0.3.0"
 byteorder = { version = "1.4.3", default-features = false}
 num = "0.4.0"
 serde = { version = "1.0.125", default-features = false }
@@ -21,4 +22,4 @@ serde = { version = "1.0.125", features = ["derive"] }
 
 [features]
 default = ["std"]
-std = ["serde/std", "byteorder/std"]
+std = ["serde/std", "byteorder/std", "ark-std/std"]

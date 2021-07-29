@@ -3,7 +3,7 @@ use byteorder::{LittleEndian, WriteBytesExt};
 
 /// Extension traits for io::Read and io::Write to read and
 /// write bin_prot encoded types
-use std::io;
+use ark_std::io;
 
 // extension trait for writers implementing io::Write to allow them to write
 // the primitive values for bin_prot
