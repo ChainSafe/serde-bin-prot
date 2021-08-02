@@ -41,7 +41,7 @@ pub(crate) struct C {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct CInner {}
+pub(crate) struct CInner(pub ());
 
 pub(crate) struct Outer {
     pub(crate) y: Inner,

@@ -1,6 +1,6 @@
 mod common;
 
-use crate::common::{BInner, Inner, Outer, A, B};
+use crate::common::{BInner, CInner, A, B, C};
 
 // Non-integer bin_prot size tests
 // Ported from: https://github.com/janestreet/bin_prot/blob/master/test/non_integers_repr.ml
@@ -150,6 +150,10 @@ fn test_inline_record() {
         },
         0x00 0x7f 0xff 0xff 0xff 0xfd 0x7f 0xff 0xff 0xff 0xff 0xff 0xff 0xff 0xfc -> B {
             y: BInner { w: 9223372036854775807, x: 2147483647 },
+            z: None,
+        },
+        0x00 0x00 -> C {
+            y: CInner(()),
             z: None,
         }
     }
