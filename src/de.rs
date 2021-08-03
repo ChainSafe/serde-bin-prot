@@ -111,9 +111,10 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                                         .to_string(),
                                 })
                             }
-                            BinProtRule::CustomForPath(_path) => {
+                            BinProtRule::CustomForPath(path) => {
                                 // here is where custom deser methods can be looked up by path
                                 // pretty sure they are all bigint anyway to just grab 4 bytes
+                                println!("Custom type {}", path);
                                 return self.deserialize_tuple(4, visitor)
 
                                 // if let Some(Some(f)) = self.custom_deser.as_ref().map(|m| m.get(&path)) {

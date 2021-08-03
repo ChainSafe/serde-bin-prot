@@ -51,11 +51,8 @@ impl BranchingIterator for BinProtRuleIterator {
         match top {
             Some(rule) => {
                 match rule {
-                    BinProtRule::Option(r) => {
+                    BinProtRule::Option(r) | BinProtRule::List(r) => {
                         self.stack.push(*r);
-                    }
-                    BinProtRule::List(r) => {
-                      // this is a special case, we need to pause and wait to be provided how many list items to 
                     }
                     BinProtRule::Record(mut rules) => {
                         self.stack
