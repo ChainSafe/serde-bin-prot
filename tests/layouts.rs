@@ -136,52 +136,52 @@ fn test_nested_sum_rule() {
 }
 
 const BLOCK_LAYOUT: &str = std::include_str!("external_transition_customs.json");
-// const BLOCK_BYTES: &[u8] = std::include_bytes!("block.hex");
-
-// #[test]
-// fn test_block() {
-//     let mut deserializer = serde_json::Deserializer::from_str(BLOCK_LAYOUT);
-//     deserializer.disable_recursion_limit();
-//     let deserializer = serde_stacker::Deserializer::new(&mut deserializer);
-//     let rule = Layout::deserialize(deserializer).unwrap().bin_prot_rule;
-
-//     let mut de = Deserializer::from_reader_with_layout(BLOCK_BYTES, rule);
-//     let result: Value = Deserialize::deserialize(&mut de).expect("Failed to deserialize");
-// }
+const BLOCK_BYTES: &[u8] = std::include_bytes!("block.hex");
 
 #[test]
-fn test_find_custom_rules() {
+fn test_block() {
     let mut deserializer = serde_json::Deserializer::from_str(BLOCK_LAYOUT);
     deserializer.disable_recursion_limit();
     let deserializer = serde_stacker::Deserializer::new(&mut deserializer);
     let rule = Layout::deserialize(deserializer).unwrap().bin_prot_rule;
 
-    let mut custom_rules = std::collections::HashSet::<String>::new();
-
-    let mut iter = rule.into_branching_iter();
-    // Test by taking the 0th branch at each branch node. Test is considered as pass
-    // if no error
-    loop {
-        match iter.next() {
-            Ok(Some(v)) => {
-                if let BinProtRule::Sum(_) | BinProtRule::Polyvar(_) = v {
-                    // if its a sum type take the first variant in each case
-                    iter.branch(0).expect("Invalid branch index");
-                }
-                if let BinProtRule::CustomForPath(path) = v {
-                    custom_rules.insert(path);
-                }
-            }
-            Err(e) => {
-                panic!("{}", e);
-            }
-            Ok(None) => {
-                println!("END!!!!");
-                break;
-            }
-        }
-    }
-
-    println!("{:?}", custom_rules);
-
+    let mut de = Deserializer::from_reader_with_layout(BLOCK_BYTES, rule);
+    let result: Value = Deserialize::deserialize(&mut de).expect("Failed to deserialize");
 }
+
+// #[test]
+// fn test_find_custom_rules() {
+//     let mut deserializer = serde_json::Deserializer::from_str(BLOCK_LAYOUT);
+//     deserializer.disable_recursion_limit();
+//     let deserializer = serde_stacker::Deserializer::new(&mut deserializer);
+//     let rule = Layout::deserialize(deserializer).unwrap().bin_prot_rule;
+
+//     let mut custom_rules = std::collections::HashSet::<String>::new();
+
+//     let mut iter = rule.into_branching_iter();
+//     // Test by taking the 0th branch at each branch node. Test is considered as pass
+//     // if no error
+//     loop {
+//         match iter.next() {
+//             Ok(Some(v)) => {
+//                 if let BinProtRule::Sum(_) | BinProtRule::Polyvar(_) = v {
+//                     // if its a sum type take the first variant in each case
+//                     iter.branch(0).expect("Invalid branch index");
+//                 }
+//                 if let BinProtRule::CustomForPath(path) = v {
+//                     custom_rules.insert(path);
+//                 }
+//             }
+//             Err(e) => {
+//                 panic!("{}", e);
+//             }
+//             Ok(None) => {
+//                 println!("END!!!!");
+//                 break;
+//             }
+//         }
+//     }
+
+//     println!("{:?}", custom_rules);
+
+// }

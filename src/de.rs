@@ -1,5 +1,7 @@
+use std::collections::HashMap;
 use crate::error::{Error, Result};
 use crate::value::layout::Summand;
+use crate::value::Value;
 use crate::value::layout::{BinProtRule, BinProtRuleIterator, BranchingIterator};
 use crate::ReadBinProtExt;
 use byteorder::{LittleEndian, ReadBytesExt};
@@ -8,6 +10,9 @@ use serde::de::{self, value::U8Deserializer, EnumAccess, IntoDeserializer, Visit
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::io::{BufReader, Read};
+
+
+type CustomDe<R> =  fn(&mut Deserializer<R>) -> Result<()>;
 
 pub struct Deserializer<R: Read> {
     rdr: BufReader<R>,
@@ -76,21 +81,29 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                             BinProtRule::Nat0 => return self.deserialize_u32(visitor),
                             BinProtRule::Float => return self.deserialize_f64(visitor),
                             BinProtRule::Char => return self.deserialize_char(visitor),
+                            BinProtRule::List(_) => {
+                                // read the length
+                                let len = self.rdr.bin_read_nat0()?;
+                                // pass this to the iterator so it knows how many times to repeat this element
+                                iter.repeat(len);
+                                // read the elements
+                                return visitor.visit_seq(SeqAccess::new(self, len))
+                            },
                             BinProtRule::Int
                             | BinProtRule::Int32
                             | BinProtRule::Int64
                             | BinProtRule::NativeInt => return self.deserialize_i64(visitor),
                             BinProtRule::Polyvar(_)
                             | BinProtRule::Hashtable(_)
-                            | BinProtRule::List(_)
                             | BinProtRule::TypeVar(_)
                             | BinProtRule::Bigstring
                             | BinProtRule::Vec
                             | BinProtRule::SelfReference(_)
                             | BinProtRule::TypeClosure(_, _)
                             | BinProtRule::TypeAbstraction(_, _) => {
-                                unimplemented!()
-                            } // Don't know how to implement these yet
+                                return Err(Error::Custom {
+                                    message: format!("No strategy to deserialize {:?}", rule)
+                                })                            } // Don't know how to implement these yet
                             BinProtRule::Custom => {
                                 // the traverse function should never produce this
                                 return Err(Error::Custom {
@@ -98,12 +111,19 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                                         .to_string(),
                                 })
                             }
-                            BinProtRule::CustomForPath(path) => {
+                            BinProtRule::CustomForPath(_path) => {
                                 // here is where custom deser methods can be looked up by path
-                                return Err(Error::Custom {
-                                    message: format!("No custom deserialization strategy provided for {}", path)
-                                        .to_string(),
-                                })
+                                // pretty sure they are all bigint anyway to just grab 4 bytes
+                                return self.deserialize_tuple(4, visitor)
+
+                                // if let Some(Some(f)) = self.custom_deser.as_ref().map(|m| m.get(&path)) {
+                                //     return f(self);
+                                // } else {
+                                //     return Err(Error::Custom {
+                                //         message: format!("No custom deserialization strategy provided for {}", path)
+                                //             .to_string(),
+                                //     })
+                                // }
                             }
                         }
                     }
