@@ -15,7 +15,7 @@
 //! Combined this should allow parsing of types defined by the layout into loosely typed representations.
 //!
 
-use crate::value::layout::{BinProtRule, RuleRef, Polyvar};
+use crate::value::layout::{BinProtRule, Polyvar, RuleRef};
 
 /// Implements a depth first search of the type tree
 /// defined by a BinProtRule
@@ -65,14 +65,21 @@ impl BranchingIterator for BinProtRuleIterator {
                     BinProtRule::Sum(summands) => {
                         // don't add to the stack. Add to the branch field instead
                         // this must be resolved by calling `branch` before the iterator can continue
-                        self.branch = Some(summands.into_iter().map(|s| s.ctor_args ).collect());
+                        self.branch = Some(summands.into_iter().map(|s| s.ctor_args).collect());
                     }
                     BinProtRule::Polyvar(polyvars) => {
-                      // these are pretty much anonymous enum/sum types and should be handled the same way
-                      self.branch = Some(polyvars.into_iter().map(|s| match s {
-                        Polyvar::Tagged(pv) => { pv.polyvar_args },
-                        Polyvar::Inherited(rule) => { vec![rule] },
-                      } ).collect());
+                        // these are pretty much anonymous enum/sum types and should be handled the same way
+                        self.branch = Some(
+                            polyvars
+                                .into_iter()
+                                .map(|s| match s {
+                                    Polyvar::Tagged(pv) => pv.polyvar_args,
+                                    Polyvar::Inherited(rule) => {
+                                        vec![rule]
+                                    }
+                                })
+                                .collect(),
+                        );
                     }
                     BinProtRule::Reference(rule_ref) => match rule_ref {
                         RuleRef::Unresolved(_payload) => {
@@ -110,7 +117,8 @@ impl BranchingIterator for BinProtRuleIterator {
         if let Some(summands) = &self.branch {
             if branch >= summands.len() {
                 return Err(format!(
-                    "Invalid branch index. Must be < {}",
+                    "Invalid branch index. Given {}, Branch must be < {}",
+                    branch,
                     summands.len()
                 ));
             }
@@ -131,11 +139,10 @@ impl BranchingIterator for BinProtRuleIterator {
 impl BinProtRuleIterator {
     // takes whatever is next on the stack and repeats it to it appears `reps` times
     pub fn repeat(&mut self, reps: usize) {
-      if let Some(top) = self.stack.pop() {
-        println!("Repeating {:?} \n {} times", top, reps);
-        self.stack
-          .extend(std::iter::repeat(top).take(reps));
-      }
+        if let Some(top) = self.stack.pop() {
+            println!("Repeating {:?} \n {} times", top, reps);
+            self.stack.extend(std::iter::repeat(top).take(reps));
+        }
     }
 }
 
@@ -414,4 +421,3 @@ mod tests {
         }
     }
 }
-

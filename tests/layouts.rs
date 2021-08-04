@@ -1,5 +1,5 @@
-use serde_bin_prot::value::layout::BranchingIterator;
 use serde::de::Deserialize;
+use serde_bin_prot::value::layout::BranchingIterator;
 use serde_bin_prot::value::layout::{BinProtRule, Layout};
 use serde_bin_prot::value::Value;
 use serde_bin_prot::Deserializer;
@@ -146,6 +146,7 @@ fn test_block() {
     let rule = Layout::deserialize(deserializer).unwrap().bin_prot_rule;
 
     let mut de = Deserializer::from_reader_with_layout(BLOCK_BYTES, rule);
+    let deserializer = serde_stacker::Deserializer::new(&mut de);
     let result: Value = Deserialize::deserialize(&mut de).expect("Failed to deserialize");
 }
 

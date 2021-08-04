@@ -1,18 +1,17 @@
-use std::collections::HashMap;
 use crate::error::{Error, Result};
 use crate::value::layout::Summand;
-use crate::value::Value;
 use crate::value::layout::{BinProtRule, BinProtRuleIterator, BranchingIterator};
+use crate::value::Value;
 use crate::ReadBinProtExt;
 use byteorder::{LittleEndian, ReadBytesExt};
+use std::collections::HashMap;
 
 use serde::de::{self, value::U8Deserializer, EnumAccess, IntoDeserializer, Visitor};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::io::{BufReader, Read};
 
-
-type CustomDe<R> =  fn(&mut Deserializer<R>) -> Result<()>;
+type CustomDe<R> = fn(&mut Deserializer<R>) -> Result<()>;
 
 pub struct Deserializer<R: Read> {
     rdr: BufReader<R>,
@@ -53,11 +52,18 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
             loop {
                 match iter.next() {
                     Ok(Some(rule)) => {
-                        println!("{:?}", rule);
+                        // println!("{:?}\n", rule);
                         match rule {
                             BinProtRule::Unit => return self.deserialize_unit(visitor),
                             BinProtRule::Record(fields) => {
                                 // Grab the field names from the rule to pass to the map access
+
+                                if let Some(field) = fields.get(0) {
+                                    if field.field_name == "version" {
+                                        println!("version:")
+                                    }
+                                }
+
                                 return visitor.visit_map(MapAccess::new(
                                     self,
                                     fields.into_iter().map(|f| f.field_name).rev().collect(),
@@ -69,6 +75,10 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                             BinProtRule::Sum(summands) => {
                                 // read the enum variant index. We need it to
                                 let index = self.rdr.bin_read_variant_index()?;
+                                println!(
+                                    "Visiting sum variant: {}: {}",
+                                    index, summands[index as usize].ctor_name
+                                );
                                 iter.branch(index.into()).expect("invalid branch index");
                                 return visitor.visit_enum(ValueEnum::new(
                                     self,
@@ -79,7 +89,9 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                             BinProtRule::Option(_) => return self.deserialize_option(visitor),
                             BinProtRule::Reference(_) => {} // next
                             BinProtRule::String => {
-                                return visitor.visit_bytes(&self.rdr.bin_read_bytes()?)
+                                let bytes = self.rdr.bin_read_bytes()?;
+                                println!("read bytes: {:?}", bytes);
+                                return visitor.visit_bytes(&bytes);
                                 // return self.deserialize_string(visitor),
                             }
                             BinProtRule::Float => return self.deserialize_f64(visitor),
@@ -90,12 +102,16 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                                 // request the iterator repeats the list elements the current number of times
                                 iter.repeat(len);
                                 // read the elements
-                                return visitor.visit_seq(SeqAccess::new(self, len))
-                            },
+                                return visitor.visit_seq(SeqAccess::new(self, len));
+                            }
                             BinProtRule::Int
                             | BinProtRule::Int32
                             | BinProtRule::Int64
-                            | BinProtRule::NativeInt => return self.deserialize_i64(visitor),
+                            | BinProtRule::NativeInt => {
+                                let i = self.rdr.bin_read_integer()?;
+                                println!("read integer: {}", i);
+                                return visitor.visit_i64(i);
+                            }
                             BinProtRule::Polyvar(_)
                             | BinProtRule::Nat0
                             | BinProtRule::Hashtable(_)
@@ -106,32 +122,72 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                             | BinProtRule::TypeClosure(_, _)
                             | BinProtRule::TypeAbstraction(_, _) => {
                                 return Err(Error::Custom {
-                                    message: format!("No strategy to deserialize {:?}", rule)
-                                })                            } // Don't know how to implement these yet
+                                    message: format!("No strategy to deserialize {:?}", rule),
+                                })
+                            } // Don't know how to implement these yet
                             BinProtRule::Custom => {
                                 // the traverse function should never produce this
                                 return Err(Error::Custom {
                                     message: "Cannot deserialize custom without providing context"
                                         .to_string(),
-                                })
+                                });
                             }
                             BinProtRule::CustomForPath(path) => {
-                                // here is where custom deser methods can be looked up by path
-                                // pretty sure they are all bigint anyway to just grab 4 uint64s bytes
-                                println!("Custom type {}", path);
-                                for _ in 0..(8*4) {
-                                    self.rdr.read_u8()?;
+                                fn burn_vec2<R>(len: usize, rdr: &mut R) -> Result<()>
+                                where
+                                    R: Read,
+                                {
+                                    for i in 0..len {
+                                        assert!(rdr.read_u8()? == 0x01); // burn a version byte for each element (0x01)
+                                        let v = rdr.bin_read_nat0::<u64>()?; // read a nat0 or integer
+                                        println!("vec[{}] = {}", i, v);
+                                    }
+                                    // burn null terminator (0x00)
+                                    assert!(rdr.read_u8()? == 0x00);
+                                    Ok(())
                                 }
-                                // return self.deserialize_tuple(4, visitor)
 
-                                // if let Some(Some(f)) = self.custom_deser.as_ref().map(|m| m.get(&path)) {
-                                //     return f(self);
-                                // } else {
-                                //     return Err(Error::Custom {
-                                //         message: format!("No custom deserialization strategy provided for {}", path)
-                                //             .to_string(),
-                                //     })
-                                // }
+                                fn burn_vec18<R>(len: usize, rdr: &mut R) -> Result<()>
+                                where
+                                    R: Read,
+                                {
+                                    for i in 0..len {
+                                        if i % 2 == 0 {
+                                            assert!(rdr.read_u8()? == 0x01);
+                                            assert!(rdr.read_u8()? == 0x01);
+                                            assert!(rdr.read_u8()? == 0x00);
+                                            assert!(rdr.read_u8()? == 0x01);
+                                        }
+
+                                        assert!(rdr.read_u8()? == 0x01); // burn a version byte for each element (0x01)
+
+                                        let v = rdr.bin_read_nat0::<u64>()?; // read a nat0 or integer
+                                        println!("vec[{}] = {}", i, v);
+
+                                        if i % 2 == 1 {
+                                            assert!(rdr.read_u8()? == 0x00);
+                                        }
+                                    }
+                                    Ok(())
+                                }
+
+                                // here is where custom deser methods can be looked up by path
+                                println!("Custom type {}", path);
+                                match path.as_str() {
+                                    "Vector.Vector_2" => {
+                                        burn_vec2(2, &mut self.rdr)?;
+                                    }
+                                    "Vector.Vector_18" => {
+                                        burn_vec18(18, &mut self.rdr)?;
+                                    }
+                                    _ => {
+                                        // all the others are just BigInt probably so burn 32 bytes
+                                        for _ in 0..(8 * 4) {
+                                            // burn 32 bytes
+                                            self.rdr.read_u8()?;
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -187,9 +243,7 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: Visitor<'de>,
     {
-        let i = self.rdr.bin_read_integer()?;
-        println!("read integer: {}", i);
-        visitor.visit_i64(i)
+        visitor.visit_i64(self.rdr.bin_read_integer()?)
     }
 
     fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value>
