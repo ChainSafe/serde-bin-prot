@@ -44,8 +44,8 @@ impl<'de> Visitor<'de> for ValueVisitor {
     }
 
     #[inline]
-    fn visit_string<E>(self, value: String) -> Result<Value, E> {
-        Ok(Value::String(value))
+    fn visit_bytes<E>(self, value: &[u8]) -> Result<Value, E> {
+        Ok(Value::String(value.to_vec()))
     }
 
     #[inline]

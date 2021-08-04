@@ -12,7 +12,7 @@ pub enum Value {
     Unit,
     Nat0(u32),
     Bool(bool),
-    String(String),
+    String(Vec<u8>),
     Char(char),
     Int(i64),
     Float(f64),

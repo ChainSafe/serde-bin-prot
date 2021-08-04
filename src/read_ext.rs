@@ -123,6 +123,13 @@ pub trait ReadBinProtExt: io::Read {
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
         Ok(s.to_string())
     }
+
+    fn bin_read_bytes(&mut self) -> Result<Vec<u8>> {
+        let len = self.bin_read_nat0::<u64>()? as usize;
+        let mut buf = vec![0u8; len as usize];
+        self.read_exact(&mut buf)?;
+        Ok(buf)
+    }
 }
 
 /// All types that implement `Read` get methods defined in `ReadBinProtIntegerExt`

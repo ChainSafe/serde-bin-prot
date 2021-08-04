@@ -52,6 +52,7 @@ impl BranchingIterator for BinProtRuleIterator {
             Some(rule) => {
                 match rule {
                     BinProtRule::Option(r) | BinProtRule::List(r) => {
+                        // the code driving the iterator should call `repeat` if it encounters a list
                         self.stack.push(*r);
                     }
                     BinProtRule::Record(mut rules) => {

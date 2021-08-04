@@ -136,7 +136,7 @@ fn test_nested_sum_rule() {
 }
 
 const BLOCK_LAYOUT: &str = std::include_str!("external_transition_customs.json");
-const BLOCK_BYTES: &[u8] = std::include_bytes!("block.hex");
+const BLOCK_BYTES: &[u8] = std::include_bytes!("block.bin");
 
 #[test]
 fn test_block() {

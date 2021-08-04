@@ -53,6 +53,7 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
             loop {
                 match iter.next() {
                     Ok(Some(rule)) => {
+                        println!("{:?}", rule);
                         match rule {
                             BinProtRule::Unit => return self.deserialize_unit(visitor),
                             BinProtRule::Record(fields) => {
@@ -77,14 +78,16 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                             BinProtRule::Bool => return self.deserialize_bool(visitor),
                             BinProtRule::Option(_) => return self.deserialize_option(visitor),
                             BinProtRule::Reference(_) => {} // next
-                            BinProtRule::String => return self.deserialize_string(visitor),
-                            BinProtRule::Nat0 => return self.deserialize_u32(visitor),
+                            BinProtRule::String => {
+                                return visitor.visit_bytes(&self.rdr.bin_read_bytes()?)
+                                // return self.deserialize_string(visitor),
+                            }
                             BinProtRule::Float => return self.deserialize_f64(visitor),
                             BinProtRule::Char => return self.deserialize_char(visitor),
                             BinProtRule::List(_) => {
                                 // read the length
                                 let len = self.rdr.bin_read_nat0()?;
-                                // pass this to the iterator so it knows how many times to repeat this element
+                                // request the iterator repeats the list elements the current number of times
                                 iter.repeat(len);
                                 // read the elements
                                 return visitor.visit_seq(SeqAccess::new(self, len))
@@ -94,6 +97,7 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                             | BinProtRule::Int64
                             | BinProtRule::NativeInt => return self.deserialize_i64(visitor),
                             BinProtRule::Polyvar(_)
+                            | BinProtRule::Nat0
                             | BinProtRule::Hashtable(_)
                             | BinProtRule::TypeVar(_)
                             | BinProtRule::Bigstring
@@ -113,9 +117,12 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                             }
                             BinProtRule::CustomForPath(path) => {
                                 // here is where custom deser methods can be looked up by path
-                                // pretty sure they are all bigint anyway to just grab 4 bytes
+                                // pretty sure they are all bigint anyway to just grab 4 uint64s bytes
                                 println!("Custom type {}", path);
-                                return self.deserialize_tuple(4, visitor)
+                                for _ in 0..(8*4) {
+                                    self.rdr.read_u8()?;
+                                }
+                                // return self.deserialize_tuple(4, visitor)
 
                                 // if let Some(Some(f)) = self.custom_deser.as_ref().map(|m| m.get(&path)) {
                                 //     return f(self);
@@ -180,7 +187,9 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: Visitor<'de>,
     {
-        visitor.visit_i64(self.rdr.bin_read_integer()?)
+        let i = self.rdr.bin_read_integer()?;
+        println!("read integer: {}", i);
+        visitor.visit_i64(i)
     }
 
     fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value>
