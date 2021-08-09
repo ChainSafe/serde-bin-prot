@@ -52,7 +52,7 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
             loop {
                 match iter.next() {
                     Ok(Some(rule)) => {
-                        // println!("{:?}\n", rule);
+                        println!("{:?}\n", rule);
                         match rule {
                             BinProtRule::Unit => return self.deserialize_unit(visitor),
                             BinProtRule::Record(fields) => {
@@ -95,7 +95,11 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                                 // return self.deserialize_string(visitor),
                             }
                             BinProtRule::Float => return self.deserialize_f64(visitor),
-                            BinProtRule::Char => return self.deserialize_char(visitor),
+                            BinProtRule::Char => {
+                                let c = self.rdr.read_u8()?;
+                                println!("read char: {}", c);
+                                // return self.deserialize_char(visitor)
+                            }
                             BinProtRule::List(_) => {
                                 // read the length
                                 let len = self.rdr.bin_read_nat0()?;
@@ -152,22 +156,27 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                                     R: Read,
                                 {
                                     for i in 0..len {
-                                        if i % 2 == 0 {
-                                            assert!(rdr.read_u8()? == 0x01);
-                                            assert!(rdr.read_u8()? == 0x01);
-                                            assert!(rdr.read_u8()? == 0x00);
-                                            assert!(rdr.read_u8()? == 0x01);
-                                        }
-
+                                        assert!(rdr.read_u8()? == 0x01);
+                                        assert!(rdr.read_u8()? == 0x01);
+                                        assert!(rdr.read_u8()? == 0x00);
+                                        assert!(rdr.read_u8()? == 0x01);
                                         assert!(rdr.read_u8()? == 0x01); // burn a version byte for each element (0x01)
 
                                         let v = rdr.bin_read_nat0::<u64>()?; // read a nat0 or integer
-                                        println!("vec[{}] = {}", i, v);
 
-                                        if i % 2 == 1 {
-                                            assert!(rdr.read_u8()? == 0x00);
-                                        }
+                                        assert!(rdr.read_u8()? == 0x01); // burn a version byte for each element (0x01)
+
+                                        let v2 = rdr.bin_read_nat0::<u64>()?; // read a nat0 or integer
+
+
+                                        println!("vec[{}] = {}, {}", i, v, v2);
+
+                                        assert!(rdr.read_u8()? == 0x00);
+
                                     }
+
+                                    assert!(rdr.read_u8()? == 0x00);
+
                                     Ok(())
                                 }
 
@@ -176,6 +185,9 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                                 match path.as_str() {
                                     "Vector.Vector_2" => {
                                         burn_vec2(2, &mut self.rdr)?;
+                                    }
+                                    "Vector.Vector_4" => {
+                                        burn_vec2(4, &mut self.rdr)?;
                                     }
                                     "Vector.Vector_18" => {
                                         burn_vec18(18, &mut self.rdr)?;

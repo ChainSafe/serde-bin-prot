@@ -146,7 +146,6 @@ fn test_block() {
     let rule = Layout::deserialize(deserializer).unwrap().bin_prot_rule;
 
     let mut de = Deserializer::from_reader_with_layout(BLOCK_BYTES, rule);
-    let deserializer = serde_stacker::Deserializer::new(&mut de);
     let result: Value = Deserialize::deserialize(&mut de).expect("Failed to deserialize");
 }
 
