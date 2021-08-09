@@ -3,12 +3,12 @@
 
 //! This serde visitor describes how the serde types map to the bin_prot::Value types
 
-use crate::de::EnumData;
+use crate::value::EnumData;
 use crate::value::Value;
 use serde::de::EnumAccess;
 use serde::de::MapAccess;
-use serde::de::SeqAccess;
 use serde::de::Visitor;
+use serde::de::{SeqAccess, VariantAccess};
 use serde::Deserialize;
 
 pub struct ValueVisitor;

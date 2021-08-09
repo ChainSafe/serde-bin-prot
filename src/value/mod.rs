@@ -8,8 +8,11 @@
 
 use serde::Deserialize;
 
+mod enum_data;
 pub mod layout;
 mod visitor;
+
+pub use enum_data::EnumData;
 
 use visitor::ValueVisitor;
 
