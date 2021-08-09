@@ -1,6 +1,6 @@
 mod common;
 
-use crate::common::{BInner, Inner, Outer, A, B};
+use crate::common::{BInner, BInner2, BInner3, BInner4, CInner, CInner2, A, B, B2, B3, C};
 use std::vec as array;
 
 // Non-integer bin_prot size tests
@@ -157,12 +157,16 @@ fn test_record2() {
 #[test]
 fn test_inline_record() {
     bin_prot_test! {
-        .. .. .. .. .. .. .. .. .. .. .. .. 0x00 0x00 0x00 -> B {
-            y: BInner { w: 0, x: 0 },
+        .. .. .. .. .. .. .. .. .. .. .. .. 0x00 0x00 0x00 0x00 0x01-> B3 {
+            y: BInner2::V1(BInner4::V0(BInner { w: 0, x: 0 })),
             z: None,
         },
-        0x00 0x7f 0xff 0xff 0xff 0xfd 0x7f 0xff 0xff 0xff 0xff 0xff 0xff 0xff 0xfc -> B {
-            y: BInner { w: 9223372036854775807, x: 2147483647 },
+        0x00 0x7f 0xff 0xff 0xff 0xfd 0x7f 0xff 0xff 0xff 0xff 0xff 0xff 0xff 0xfc 0x00 0x01 -> B2 {
+            y: BInner3 { dummy: 1 , inner: BInner2::V0(BInner { w: 9223372036854775807, x: 2147483647 })},
+            z: None,
+        },
+        0x00 0x00 0x01 0x01 -> C {
+            y: CInner::V1(CInner2::V1(())),
             z: None,
         }
     }
