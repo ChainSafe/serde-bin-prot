@@ -35,10 +35,12 @@ pub struct BinProtRuleIterator {
 
 /// An iterator where the next item may require specifying a branch to take
 /// At some points in its iteration the iterator will require a call to branch to select which
-/// path to take before continuing
+/// path to take before continuing.
+/// Also supports repeating a node in the tree for a given number of reps
 pub trait BranchingIterator {
     type Item;
     type Error;
+
     fn next(&mut self) -> Result<Option<Self::Item>, Self::Error>;
     fn branch(&mut self, branch: usize) -> Result<(), Self::Error>;
     fn repeat(&mut self, reps: usize) -> Result<(), Self::Error>;
