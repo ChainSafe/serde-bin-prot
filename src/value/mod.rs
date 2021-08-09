@@ -17,6 +17,7 @@ pub use enum_data::EnumData;
 use visitor::ValueVisitor;
 
 #[derive(Clone, Debug, PartialEq)]
+#[allow(dead_code)] // allow for now until full implementation
 pub enum Value {
     Unit,
     Nat0(u32),

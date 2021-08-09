@@ -154,6 +154,7 @@ impl BranchingIterator for BinProtRuleIterator {
 
 // Consumes the rule and produces a branching iterator
 impl BinProtRule {
+    #[allow(dead_code)] // allow this for now since
     pub fn into_branching_iter(self) -> BinProtRuleIterator {
         BinProtRuleIterator {
             stack: vec![self],
