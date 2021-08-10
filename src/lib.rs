@@ -5,6 +5,7 @@ pub mod error;
 pub mod integers;
 mod read_ext;
 mod ser;
+mod value;
 mod write_ext;
 
 pub use array::OcamlArray;
