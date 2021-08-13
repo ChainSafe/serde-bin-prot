@@ -108,6 +108,12 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                                 // read the elements
                                 return visitor.visit_seq(SeqAccess::new(self, len));
                             }
+                            BinProtRule::Vec(len, _) => {
+                                let result = visitor.visit_seq(SeqAccess::new(self, len));
+                                // read null termination byte
+                                assert!(self.rdr.read_u8()? == 0x00);
+                                return result;
+                            }
                             BinProtRule::Int
                             | BinProtRule::Int32
                             | BinProtRule::Int64
@@ -121,7 +127,6 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                             | BinProtRule::Hashtable(_)
                             | BinProtRule::TypeVar(_)
                             | BinProtRule::Bigstring
-                            | BinProtRule::Vec
                             | BinProtRule::SelfReference(_)
                             | BinProtRule::TypeClosure(_, _)
                             | BinProtRule::TypeAbstraction(_, _) => {
@@ -129,73 +134,31 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                                     message: format!("No strategy to deserialize {:?}", rule),
                                 })
                             } // Don't know how to implement these yet
-                            BinProtRule::Custom => {
+                            BinProtRule::Custom(_) => {
                                 // the traverse function should never produce this
                                 return Err(Error::Custom {
                                     message: "Cannot deserialize custom without providing context"
                                         .to_string(),
                                 });
                             }
-                            BinProtRule::CustomForPath(path) => {
-                                fn burn_vec2<R>(len: usize, rdr: &mut R) -> Result<()>
-                                where
-                                    R: Read,
-                                {
-                                    for i in 0..len {
-                                        assert!(rdr.read_u8()? == 0x01); // burn a version byte for each element (0x01)
-                                        let v = rdr.bin_read_nat0::<u64>()?; // read a nat0 or integer
-                                        println!("vec[{}] = {}", i, v);
-                                    }
-                                    // burn null terminator (0x00)
-                                    assert!(rdr.read_u8()? == 0x00);
-                                    Ok(())
-                                }
-
-                                fn burn_vec18<R>(len: usize, rdr: &mut R) -> Result<()>
-                                where
-                                    R: Read,
-                                {
-                                    for i in 0..len {
-                                        assert!(rdr.read_u8()? == 0x01);
-                                        assert!(rdr.read_u8()? == 0x01);
-                                        assert!(rdr.read_u8()? == 0x00);
-                                        assert!(rdr.read_u8()? == 0x01);
-                                        assert!(rdr.read_u8()? == 0x01); // burn a version byte for each element (0x01)
-
-                                        let v = rdr.bin_read_nat0::<u64>()?; // read a nat0 or integer
-
-                                        assert!(rdr.read_u8()? == 0x01); // burn a version byte for each element (0x01)
-
-                                        let v2 = rdr.bin_read_nat0::<u64>()?; // read a nat0 or integer
-
-
-                                        println!("vec[{}] = {}, {}", i, v, v2);
-
-                                        assert!(rdr.read_u8()? == 0x00);
-
-                                    }
-
-                                    assert!(rdr.read_u8()? == 0x00);
-
-                                    Ok(())
-                                }
-
+                            BinProtRule::CustomForPath(path, _rules) => {
                                 // here is where custom deser methods can be looked up by path
                                 println!("Custom type {}", path);
                                 match path.as_str() {
-                                    "Vector.Vector_2" => {
-                                        burn_vec2(2, &mut self.rdr)?;
-                                    }
-                                    "Vector.Vector_4" => {
-                                        burn_vec2(4, &mut self.rdr)?;
-                                    }
-                                    "Vector.Vector_18" => {
-                                        burn_vec18(18, &mut self.rdr)?;
+                                    "Vector.Vector_2" | "Vector.Vector_4" | "Vector.Vector_18" => {
+                                        for _ in 0..200 {
+                                            print!("{:02x} ", self.rdr.read_u8()?);
+                                        }
+                                        return Err(Error::Custom {
+                                            message: format!(
+                                                "Can't handle custom type {}",
+                                                path.as_str()
+                                            ),
+                                        });
                                     }
                                     _ => {
                                         // all the others are just BigInt probably so burn 32 bytes
                                         for _ in 0..(8 * 4) {
-                                            // burn 32 bytes
                                             self.rdr.read_u8()?;
                                         }
                                     }

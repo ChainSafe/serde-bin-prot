@@ -90,6 +90,9 @@ impl BranchingIterator for BinProtRuleIterator {
                             self.current_module_path = Some(payload.source_module_path);
                         }
                     },
+                    BinProtRule::Vec(len, r) => {
+                        self.stack.extend(std::iter::repeat(*r).take(len));
+                    }
                     BinProtRule::String
                     | BinProtRule::Int
                     | BinProtRule::Int64
@@ -100,9 +103,9 @@ impl BranchingIterator for BinProtRuleIterator {
                     | BinProtRule::Int32
                     | BinProtRule::NativeInt
                     | BinProtRule::Float => {} // These are leaves so nothing required
-                    BinProtRule::Custom => {
+                    BinProtRule::Custom(rules) => {
                         if let Some(path) = &self.current_module_path {
-                            return Ok(Some(BinProtRule::CustomForPath(path.to_string())));
+                            return Ok(Some(BinProtRule::CustomForPath(path.to_string(), rules)));
                         }
                     }
                     r => panic!("unimplemented: {:?}", r),
