@@ -1,17 +1,14 @@
 use crate::error::{Error, Result};
 use crate::value::layout::Summand;
 use crate::value::layout::{BinProtRule, BinProtRuleIterator, BranchingIterator};
-use crate::value::Value;
+
 use crate::ReadBinProtExt;
 use byteorder::{LittleEndian, ReadBytesExt};
-use std::collections::HashMap;
 
 use serde::de::{self, value::U8Deserializer, EnumAccess, IntoDeserializer, Visitor};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::io::{BufReader, Read};
-
-type CustomDe<R> = fn(&mut Deserializer<R>) -> Result<()>;
 
 pub struct Deserializer<R: Read> {
     rdr: BufReader<R>,
@@ -52,7 +49,6 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
             loop {
                 match iter.next() {
                     Ok(Some(rule)) => {
-                        println!("{:?}\n", rule);
                         match rule {
                             BinProtRule::Unit => return self.deserialize_unit(visitor),
                             BinProtRule::Record(fields) => {
@@ -141,21 +137,39 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                                         .to_string(),
                                 });
                             }
-                            BinProtRule::CustomForPath(path, _rules) => {
+                            BinProtRule::CustomForPath(path, rules) => {
                                 // here is where custom deser methods can be looked up by path
                                 println!("Custom type {}", path);
+
                                 match path.as_str() {
-                                    "Vector.Vector_2" | "Vector.Vector_4" | "Vector.Vector_18" => {
-                                        for _ in 0..200 {
-                                            print!("{:02x} ", self.rdr.read_u8()?);
-                                        }
-                                        return Err(Error::Custom {
-                                            message: format!(
-                                                "Can't handle custom type {}",
-                                                path.as_str()
-                                            ),
-                                        });
+                                    "Pickles_type.Vector.Vector2"
+                                    | "Pickles_type.Vector.Vector4"
+                                    | "Pickles_type.Vector.Vector8"
+                                    | "Pickles_type.Vector.Vector18" => {
+                                        let element_rule = rules.first().unwrap();
+
+                                        let len = match path.as_str() {
+                                            "Pickles_type.Vector.Vector2" => 2,
+                                            "Pickles_type.Vector.Vector4" => 4,
+                                            "Pickles_type.Vector.Vector8" => 8,
+                                            "Pickles_type.Vector.Vector18" => 18,
+                                            _ => {
+                                                return Err(Error::Custom {
+                                                    message: "Unknwon custom vector type"
+                                                        .to_string(),
+                                                })
+                                            }
+                                        };
+
+                                        iter.push(element_rule.clone());
+                                        iter.repeat(len);
+                                        let result = visitor.visit_seq(SeqAccess::new(self, len));
+                                        // burn the zero byte terminator
+                                        assert!(self.rdr.read_u8()? == 0x00);
+
+                                        return result;
                                     }
+
                                     _ => {
                                         // all the others are just BigInt probably so burn 32 bytes
                                         for _ in 0..(8 * 4) {

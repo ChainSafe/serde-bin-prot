@@ -147,6 +147,11 @@ impl BinProtRuleIterator {
             self.stack.extend(std::iter::repeat(top).take(reps));
         }
     }
+
+    // Drop a custom rule onto the stack
+    pub fn push(&mut self, rule: BinProtRule) {
+        self.stack.push(rule);
+    }
 }
 
 // Consumes the rule and produces a branching iterator
