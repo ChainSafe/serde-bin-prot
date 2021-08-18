@@ -10,6 +10,7 @@ use serde::de::MapAccess;
 use serde::de::Visitor;
 use serde::de::{SeqAccess, VariantAccess};
 use serde::Deserialize;
+use std::collections::HashMap;
 
 pub struct ValueVisitor;
 
@@ -90,9 +91,9 @@ impl<'de> Visitor<'de> for ValueVisitor {
     where
         V: MapAccess<'de>,
     {
-        let mut values = Vec::new();
+        let mut values = HashMap::new();
         while let Some((k, v)) = visitor.next_entry()? {
-            values.push((k, v))
+            values.insert(k, v).unwrap(); // returns old value of replacing a key. This cannot happen here so can unwrap
         }
         Ok(Value::Record(values))
     }

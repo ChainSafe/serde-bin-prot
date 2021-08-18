@@ -7,11 +7,14 @@
 //! a supplimentary file that describes the layout of the binary (see layout/)
 
 use serde::Deserialize;
+use std::collections::HashMap;
 
 mod enum_data;
+mod index;
 pub mod layout;
 mod visitor;
 
+pub use self::index::Index;
 pub use enum_data::EnumData;
 
 use visitor::ValueVisitor;
@@ -27,7 +30,7 @@ pub enum Value {
     Int(i64),
     Float(f64),
     Option(Option<Box<Value>>),
-    Record(Vec<(String, Value)>), // records/structs
+    Record(HashMap<String, Value>), // records/structs
     Tuple(Vec<Value>),
     Sum {
         name: String,
@@ -55,5 +58,17 @@ impl<'de> Deserialize<'de> for Value {
         D: serde::Deserializer<'de>,
     {
         deserializer.deserialize_any(ValueVisitor)
+    }
+}
+
+impl Value {
+    /// Inner reveals an Option variant as a Rust Option type
+    /// Calling inner on a non-option variant results in a panic
+    pub fn inner(&self) -> Option<Self> {
+        if let Value::Option(inner) = self {
+            inner.clone().map(|e| *e)
+        } else {
+            panic!("Called inner on a non-option variant {:?}", self)
+        }
     }
 }
