@@ -107,10 +107,14 @@ mod tests {
 
     #[test]
     fn index_into_tuple_variants() {
-        let val = Value::Sum{
+        let val = Value::Sum {
             name: "variant A".to_string(),
             index: 0,
-            value: Box::new(Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)])),
+            value: Box::new(Value::List(vec![
+                Value::Int(1),
+                Value::Int(2),
+                Value::Int(3),
+            ])),
         };
         assert_eq!(val[0], Value::Int(1));
         assert_eq!(val[1], Value::Int(2));
@@ -123,7 +127,7 @@ mod tests {
         inner.insert("one".to_string(), Value::Int(1));
         inner.insert("two".to_string(), Value::Int(2));
 
-        let val = Value::Sum{
+        let val = Value::Sum {
             name: "variant A".to_string(),
             index: 0,
             value: Box::new(Value::Record(inner)),
@@ -156,5 +160,4 @@ mod tests {
         let val = Value::Int(1);
         assert!(val.inner().is_none());
     }
-
 }
