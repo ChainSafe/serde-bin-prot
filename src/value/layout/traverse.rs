@@ -143,7 +143,6 @@ impl BinProtRuleIterator {
     // takes whatever is next on the stack and repeats it to it appears `reps` times
     pub fn repeat(&mut self, reps: usize) {
         if let Some(top) = self.stack.pop() {
-            println!("Repeating {:?} \n {} times", top, reps);
             self.stack.extend(std::iter::repeat(top).take(reps));
         }
     }

@@ -49,14 +49,19 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
             loop {
                 match iter.next() {
                     Ok(Some(rule)) => {
+                        // println!("{:?} \n", rule);
                         match rule {
-                            BinProtRule::Unit => return self.deserialize_unit(visitor),
+                            BinProtRule::Unit => {
+                                println!("read unit.");
+                                return self.deserialize_unit(visitor);
+                            }
                             BinProtRule::Record(fields) => {
                                 // Grab the field names from the rule to pass to the map access
+                                println!("read record.");
 
                                 if let Some(field) = fields.get(0) {
                                     if field.field_name == "version" {
-                                        println!("version:")
+                                        print!("version:   ");
                                     }
                                 }
 
@@ -66,9 +71,11 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                                 ));
                             }
                             BinProtRule::Tuple(items) => {
-                                return visitor.visit_seq(SeqAccess::new(self, items.len()))
+                                println!("read tuple.");
+                                return visitor.visit_seq(SeqAccess::new(self, items.len()));
                             }
                             BinProtRule::Sum(summands) => {
+                                println!("read sum.");
                                 // read the enum variant index. We need it to
                                 let index = self.rdr.bin_read_variant_index()?;
                                 println!(
@@ -81,8 +88,14 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                                     summands[index as usize].clone(),
                                 ));
                             }
-                            BinProtRule::Bool => return self.deserialize_bool(visitor),
-                            BinProtRule::Option(_) => return self.deserialize_option(visitor),
+                            BinProtRule::Bool => {
+                                println!("read bool.");
+                                return self.deserialize_bool(visitor);
+                            }
+                            BinProtRule::Option(_) => {
+                                println!("read option.");
+                                return self.deserialize_option(visitor);
+                            }
                             BinProtRule::Reference(_) => {} // next
                             BinProtRule::String => {
                                 let bytes = self.rdr.bin_read_bytes()?;
@@ -104,12 +117,6 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                                 // read the elements
                                 return visitor.visit_seq(SeqAccess::new(self, len));
                             }
-                            BinProtRule::Vec(len, _) => {
-                                let result = visitor.visit_seq(SeqAccess::new(self, len));
-                                // read null termination byte
-                                assert!(self.rdr.read_u8()? == 0x00);
-                                return result;
-                            }
                             BinProtRule::Int
                             | BinProtRule::Int32
                             | BinProtRule::Int64
@@ -119,6 +126,7 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                                 return visitor.visit_i64(i);
                             }
                             BinProtRule::Polyvar(_)
+                            | BinProtRule::Vec(_, _)
                             | BinProtRule::Nat0
                             | BinProtRule::Hashtable(_)
                             | BinProtRule::TypeVar(_)
@@ -142,20 +150,22 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                                 println!("Custom type {}", path);
 
                                 match path.as_str() {
-                                    "Pickles_type.Vector.Vector2"
-                                    | "Pickles_type.Vector.Vector4"
-                                    | "Pickles_type.Vector.Vector8"
-                                    | "Pickles_type.Vector.Vector18" => {
+                                    "Pickles_type.Vector.Vector2" // the missing 's' on 'types' here is intention due to a big in layout producing code
+                                    | "Pickles_types.Vector.Vector4"
+                                    | "Pickles_types.Vector.Vector8"
+                                    | "Pickles_types.Vector.Vector17"
+                                    | "Pickles_types.Vector.Vector18" => {
                                         let element_rule = rules.first().unwrap();
 
                                         let len = match path.as_str() {
                                             "Pickles_type.Vector.Vector2" => 2,
-                                            "Pickles_type.Vector.Vector4" => 4,
-                                            "Pickles_type.Vector.Vector8" => 8,
-                                            "Pickles_type.Vector.Vector18" => 18,
+                                            "Pickles_types.Vector.Vector4" => 4,
+                                            "Pickles_types.Vector.Vector8" => 8,
+                                            "Pickles_types.Vector.Vector17" => 17,
+                                            "Pickles_types.Vector.Vector18" => 18,
                                             _ => {
                                                 return Err(Error::Custom {
-                                                    message: "Unknwon custom vector type"
+                                                    message: "Unknown custom vector type"
                                                         .to_string(),
                                                 })
                                             }
@@ -171,10 +181,12 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
                                     }
 
                                     _ => {
+                                        println!("deserializing as BigInt");
                                         // all the others are just BigInt probably so burn 32 bytes
                                         for _ in 0..(8 * 4) {
-                                            self.rdr.read_u8()?;
+                                            print!("{:02x} ", self.rdr.read_u8()?);
                                         }
+                                        println!();
                                     }
                                 }
                             }
