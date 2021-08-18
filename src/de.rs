@@ -1,20 +1,29 @@
-use crate::error::{Error, Result};
-use crate::ReadBinProtExt;
-use byteorder::{LittleEndian, ReadBytesExt};
-use serde::de::{
-    self, value::U32Deserializer, DeserializeSeed, EnumAccess, IntoDeserializer, Visitor,
-};
-use serde::Deserialize;
 use std::io::{BufReader, Read};
 
+use crate::error::{Error, Result};
+use crate::value::layout::{BinProtRule, BinProtRuleIterator};
+use crate::ReadBinProtExt;
+use byteorder::{LittleEndian, ReadBytesExt};
+use serde::de::{self, value::U8Deserializer, EnumAccess, IntoDeserializer, Visitor};
+use serde::Deserialize;
+
 pub struct Deserializer<R: Read> {
-    rdr: BufReader<R>,
+    pub rdr: BufReader<R>,
+    pub layout_iter: Option<BinProtRuleIterator>,
 }
 
 impl<R: Read> Deserializer<R> {
-    fn from_reader(rdr: R) -> Self {
+    pub fn from_reader(rdr: R) -> Self {
         Self {
             rdr: BufReader::new(rdr),
+            layout_iter: None,
+        }
+    }
+
+    pub fn from_reader_with_layout(rdr: R, layout: BinProtRule) -> Self {
+        Self {
+            rdr: BufReader::new(rdr),
+            layout_iter: Some(layout.into_branching_iter()),
         }
     }
 }
@@ -27,13 +36,11 @@ pub fn from_reader<'de, R: Read, T: Deserialize<'de>>(rdr: R) -> Result<T> {
 
 impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     type Error = Error;
-    fn deserialize_any<V>(self, _visitor: V) -> Result<V::Value>
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        // can only deserialize any for a self describing protocol
-        // which bin_io is not
-        Err(Error::WontImplement)
+        self.deserialize_loose(visitor)
     }
 
     fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value>
@@ -78,7 +85,7 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: Visitor<'de>,
     {
-        visitor.visit_u8(self.rdr.read_u8()?)
+        visitor.visit_u8(self.rdr.bin_read_integer()?)
     }
 
     fn deserialize_u16<V>(self, visitor: V) -> Result<V::Value>
@@ -190,7 +197,7 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
         visitor.visit_newtype_struct(self)
     }
 
-    // Parsing an unknown length seq (e.g array, lust) involves
+    // Parsing an unknown length seq (e.g array, list) involves
     // first reading the length as a Nat0 and then parsing the next values
     fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value>
     where
@@ -229,8 +236,11 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: Visitor<'de>,
     {
-        let len = self.rdr.bin_read_nat0()?;
-        visitor.visit_map(SeqAccess::new(self, len))
+        // we can't know the field names (and don't need to) if we are deserializing in
+        // stronly typed mode. To make everything work just add some dummy field names
+        let len: usize = self.rdr.bin_read_nat0()?;
+        let dummy_fields = std::iter::repeat("".to_string()).take(len).collect();
+        visitor.visit_map(MapAccess::new(self, dummy_fields))
     }
 
     // Structs look just like sequences
@@ -255,7 +265,8 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: Visitor<'de>,
     {
-        visitor.visit_enum(Enum::new(self))
+        let index = self.rdr.bin_read_variant_index()?;
+        visitor.visit_enum(Enum::new(self, index))
     }
 
     fn deserialize_identifier<V>(self, _visitor: V) -> Result<V::Value>
@@ -285,7 +296,7 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     }
 }
 
-struct SeqAccess<'a, R: Read + 'a> {
+pub struct SeqAccess<'a, R: Read + 'a> {
     de: &'a mut Deserializer<R>,
     len: usize,
 }
@@ -316,13 +327,25 @@ impl<'de: 'a, 'a, R: Read> de::SeqAccess<'de> for SeqAccess<'a, R> {
     }
 }
 
-impl<'de: 'a, 'a, R: Read> de::MapAccess<'de> for SeqAccess<'a, R> {
+pub struct MapAccess<'a, R: Read + 'a> {
+    de: &'a mut Deserializer<R>,
+    field_names: Vec<String>, // field names should be stored as a stack (first element last)
+}
+
+impl<'a, R: Read + 'a> MapAccess<'a, R> {
+    pub fn new(de: &'a mut Deserializer<R>, field_names: Vec<String>) -> Self {
+        Self { de, field_names }
+    }
+}
+
+impl<'de: 'a, 'a, R: Read> de::MapAccess<'de> for MapAccess<'a, R> {
     type Error = Error;
 
     fn next_key_seed<T: de::DeserializeSeed<'de>>(&mut self, seed: T) -> Result<Option<T::Value>> {
-        if self.len > 0 {
-            self.len -= 1;
-            seed.deserialize(&mut *self.de).map(Some)
+        if let Some(name) = self.field_names.pop() {
+            // create a new deserializer to read the name from memory
+            // as it isn't present in the serialized output
+            seed.deserialize(name.into_deserializer()).map(Some)
         } else {
             Ok(None)
         }
@@ -333,17 +356,18 @@ impl<'de: 'a, 'a, R: Read> de::MapAccess<'de> for SeqAccess<'a, R> {
     }
 
     fn size_hint(&self) -> Option<usize> {
-        Some(self.len)
+        Some(self.field_names.len())
     }
 }
 
-struct Enum<'a, R: Read> {
+pub struct Enum<'a, R: Read> {
     de: &'a mut Deserializer<R>,
+    index: u8,
 }
 
 impl<'a, 'de, R: Read> Enum<'a, R> {
-    fn new(de: &'a mut Deserializer<R>) -> Self {
-        Enum { de }
+    pub fn new(de: &'a mut Deserializer<R>, index: u8) -> Self {
+        Enum { de, index }
     }
 }
 
@@ -357,9 +381,8 @@ impl<'de, 'a, R: Read> EnumAccess<'de> for Enum<'a, R> {
     where
         V: de::DeserializeSeed<'de>,
     {
-        let index = self.de.rdr.bin_read_variant_index()?;
-        let de: U32Deserializer<Self::Error> = (index as u32).into_deserializer();
-        let v = DeserializeSeed::deserialize(seed, de)?;
+        let de: U8Deserializer<Self::Error> = (self.index as u8).into_deserializer();
+        let v = seed.deserialize(de)?;
         Ok((v, self))
     }
 }

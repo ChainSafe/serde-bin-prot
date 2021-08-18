@@ -43,7 +43,6 @@ pub trait BranchingIterator {
 
     fn next(&mut self) -> Result<Option<Self::Item>, Self::Error>;
     fn branch(&mut self, branch: usize) -> Result<(), Self::Error>;
-    fn repeat(&mut self, reps: usize) -> Result<(), Self::Error>;
 }
 
 impl BranchingIterator for BinProtRuleIterator {
@@ -109,9 +108,9 @@ impl BranchingIterator for BinProtRuleIterator {
                     | BinProtRule::Int32
                     | BinProtRule::NativeInt
                     | BinProtRule::Float => {} // These are leaves so nothing required
-                    BinProtRule::Custom => {
+                    BinProtRule::Custom(rules) => {
                         if let Some(path) = &self.current_module_path {
-                            return Ok(Some(BinProtRule::CustomForPath(path.to_string())));
+                            return Ok(Some(BinProtRule::CustomForPath(path.to_string(), rules)));
                         }
                     }
                     r => panic!("unimplemented: {:?}", r),
@@ -143,12 +142,19 @@ impl BranchingIterator for BinProtRuleIterator {
             Err("Cannot branch at this location in the tree".to_string())
         }
     }
+}
 
-    fn repeat(&mut self, reps: usize) -> Result<(), Self::Error> {
+impl BinProtRuleIterator {
+    // takes whatever is next on the stack and repeats it to it appears `reps` times
+    pub fn repeat(&mut self, reps: usize) {
         if let Some(top) = self.stack.pop() {
             self.stack.extend(std::iter::repeat(top).take(reps));
         }
-        Ok(())
+    }
+
+    // Drop a custom rule onto the stack
+    pub fn push(&mut self, rule: BinProtRule) {
+        self.stack.push(rule);
     }
 }
 
