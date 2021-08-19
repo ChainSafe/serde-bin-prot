@@ -296,7 +296,7 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     }
 }
 
-pub struct SeqAccess<'a, R: Read + 'a> {
+pub(crate) struct SeqAccess<'a, R: Read + 'a> {
     de: &'a mut Deserializer<R>,
     len: usize,
 }
@@ -327,7 +327,7 @@ impl<'de: 'a, 'a, R: Read> de::SeqAccess<'de> for SeqAccess<'a, R> {
     }
 }
 
-pub struct MapAccess<'a, R: Read + 'a> {
+pub(crate) struct MapAccess<'a, R: Read + 'a> {
     de: &'a mut Deserializer<R>,
     field_names: Vec<String>, // field names should be stored as a stack (first element last)
 }
