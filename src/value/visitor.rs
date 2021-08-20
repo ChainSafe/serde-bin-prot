@@ -1,14 +1,9 @@
-// Copyright 2020 ChainSafe Systems
-// SPDX-License-Identifier: Apache-2.0
-
-//! This serde visitor describes how the serde types map to the bin_prot::Value types
-
-use crate::value::EnumData;
+use crate::loose_deserializer::EnumData;
 use crate::value::Value;
-use serde::de::EnumAccess;
 use serde::de::MapAccess;
+use serde::de::SeqAccess;
 use serde::de::Visitor;
-use serde::de::{SeqAccess, VariantAccess};
+use serde::de::{EnumAccess, VariantAccess};
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -27,11 +22,15 @@ impl<'de> Visitor<'de> for ValueVisitor {
     }
 
     #[inline]
+    fn visit_char<E>(self, value: char) -> Result<Value, E> {
+        Ok(Value::Char(value))
+    }
+
+    #[inline]
     fn visit_i64<E>(self, value: i64) -> Result<Value, E> {
         Ok(Value::Int(value))
     }
 
-    // unsure how to handle these at this stage
     // #[inline]
     // fn visit_u64<E>(self, value: u64) -> Result<Value, E> {
     //     Ok(Value::Int(value.into()))

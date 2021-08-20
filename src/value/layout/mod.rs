@@ -45,7 +45,7 @@ pub enum BinProtRule {
     Polyvar(Vec<Polyvar>),
     List(Box<BinProtRule>),
     Hashtable(HashTblEntry),
-    Vec,
+    Vec(usize, Box<BinProtRule>),
     Bigstring,
     // //  track indirections for debugging *),
     Reference(RuleRef),
@@ -56,8 +56,8 @@ pub enum BinProtRule {
     TypeAbstraction(Vec<String>, Box<BinProtRule>),
     // //  recursive parameterized type with bindings *),
     TypeClosure(Vec<(String, BinProtRule)>, Box<BinProtRule>),
-    Custom,
-    CustomForPath(String), // does not occur in source files, used in traverse
+    Custom(Vec<BinProtRule>),
+    CustomForPath(String, Vec<BinProtRule>), // does not occur in source files, used in traverse
 }
 
 // required due to the strange enum encoding used by yojson (see list_tagged_enum.rs)
@@ -76,9 +76,7 @@ impl TryFrom<ListTaggedEnum> for BinProtRule {
                 "Int64" => Ok(BinProtRule::Int64),
                 "Native_int" => Ok(BinProtRule::NativeInt),
                 "Float" => Ok(BinProtRule::Float),
-                "Vec" => Ok(BinProtRule::Vec),
                 "Bigstring" => Ok(BinProtRule::Bigstring),
-                "Custom" => Ok(BinProtRule::Custom),
                 _ => Err(format!("Unexpected enum tag: {}", t)),
             },
             ListTaggedEnum::One((t, v)) => match t.as_str() {
@@ -108,9 +106,16 @@ impl TryFrom<ListTaggedEnum> for BinProtRule {
                 "Self_reference" => Ok(BinProtRule::SelfReference(
                     from_value(v).map_err(|e| e.to_string())?,
                 )),
+                "Custom" => Ok(BinProtRule::Custom(
+                    from_value(v).map_err(|e| e.to_string())?,
+                )),
                 _ => Err(format!("Unexpected enum tag: {}", t)),
             },
             ListTaggedEnum::Two((t, v1, v2)) => match t.as_str() {
+                "Vec" => Ok(BinProtRule::Vec(
+                    from_value(v1).map_err(|e| e.to_string())?,
+                    from_value(v2).map_err(|e| e.to_string())?,
+                )),
                 "Type_abstraction" => Ok(BinProtRule::TypeAbstraction(
                     from_value(v1).map_err(|e| e.to_string())?,
                     from_value(v2).map_err(|e| e.to_string())?,
