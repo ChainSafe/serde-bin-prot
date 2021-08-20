@@ -36,7 +36,9 @@ impl<'de, 'a, R: Read> DS<R> {
                                 return visitor.visit_seq(SeqAccess::new(self, items.len()));
                             }
                             BinProtRule::Sum(summands) => {
-                                // read the enum variant index. We need it to
+                                // read the enum variant index.
+                                // We need this to select which variant layout to use
+                                // when deserializing the variants data
                                 let index = self.rdr.bin_read_variant_index()?;
                                 iter.branch(index.into()).expect("invalid branch index");
                                 return visitor.visit_enum(ValueEnum::new(
