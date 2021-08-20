@@ -52,7 +52,7 @@ impl<'de, 'a, R: Read> DS<R> {
                             BinProtRule::Option(_) => {
                                 return self.deserialize_option(visitor);
                             }
-                            BinProtRule::Reference(_) => {} // next
+                            BinProtRule::Reference(_) => {} // continue iterator
                             BinProtRule::String => {
                                 return visitor.visit_bytes(&self.rdr.bin_read_bytes()?);
                             }
